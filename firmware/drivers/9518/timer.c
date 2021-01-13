@@ -73,6 +73,28 @@ void timer_start(timer_type_e type)
 }
 
 /**
+ * @brief     the specifed timer stop working.
+ * @param[in] type - select the timer to stop.
+ * @return    none
+ */
+void timer_stop(timer_type_e type)
+{
+	switch(type)
+	{
+		case TIMER0:
+			reg_tmr_ctrl0 &= (~FLD_TMR0_EN);
+			break;
+		case TIMER1:
+			reg_tmr_ctrl0 &= (~FLD_TMR1_EN);
+			break;
+		default:
+			break;
+	}
+}
+
+
+
+/**
  * @brief     set mode, initial tick and capture of timer.
  * @param[in] type - select the timer to start.
  * @param[in] mode - select mode for timer.
@@ -88,12 +110,12 @@ void timer_set_mode(timer_type_e type, timer_mode_e mode,unsigned int init_tick,
 	switch(type)
  	{
  		case TIMER0:
- 			reg_tmr_sta |= FLD_TMR_STA_TMR0; //clear irq status
+ 			reg_tmr_sta = FLD_TMR_STA_TMR0; //clear irq status
  		 	reg_tmr_ctrl0 &= (~FLD_TMR0_MODE);
  		 	reg_tmr_ctrl0 |= mode;
  			break;
  		case TIMER1:
- 			reg_tmr_sta |= FLD_TMR_STA_TMR1; //clear irq status
+ 			reg_tmr_sta = FLD_TMR_STA_TMR1; //clear irq status
  			reg_tmr_ctrl0 &= (~FLD_TMR1_MODE);
  			reg_tmr_ctrl0 |= (mode<<4);
  			break;

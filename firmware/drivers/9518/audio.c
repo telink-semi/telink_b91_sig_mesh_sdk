@@ -62,8 +62,8 @@ aduio_i2s_codec_config_st audio_i2s_codec_config=
    .codec_data_select		=CODEC_BIT_16_DATA,
    .i2s_codec_m_s_mode		=I2S_M_CODEC_S,
    .i2s_data_invert_select  =I2S_DATA_INVERT_DIS,//L channel default
-   .in_digital_gain			=CODEC_IN_D_GAIN_0_DB,
-   .in_analog_gain     		=CODEC_IN_A_GAIN_0_DB,
+   .in_digital_gain			=CODEC_IN_D_GAIN_8_DB,
+   .in_analog_gain     		=CODEC_IN_A_GAIN_20_DB,
    .out_digital_gain   		=CODEC_OUT_D_GAIN_0_DB,
    .out_analog_gain    		=CODEC_OUT_A_GAIN_6_DB,
 };

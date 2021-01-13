@@ -263,6 +263,9 @@ extern "C" {
 #define	SW1_GPIO				GPIO_PD2
 #define	SW2_GPIO				GPIO_PD1
 #endif
+
+#define SPEECH_ENABLE			1
+
 /////////////////// Clock  /////////////////////////////////
 
 #if DUAL_MESH_ZB_BL_EN // keep same with zb
@@ -271,6 +274,8 @@ extern "C" {
 #define CLOCK_SYS_CLOCK_HZ  	48000000
 #elif DEBUG_CFG_CMD_GROUP_AK_EN
 #define CLOCK_SYS_CLOCK_HZ  	32000000
+#elif SPEECH_ENABLE
+#define CLOCK_SYS_CLOCK_HZ  	48000000
 #else
 #define CLOCK_SYS_CLOCK_HZ  	16000000
 #endif

@@ -379,11 +379,121 @@ void test_simu_io_user_define_proc()
 }
 #endif
 
+
+#if SPEECH_ENABLE
+#define AUDIO_LINE_IN            0
+#define AUDIO_AMIC_IN            1
+#define AUDIO_DMIC_IN            2
+
+#define  AUDIO_IN_MODE          AUDIO_AMIC_IN
+
+#define MIC_RESOLUTION_BIT		16
+
+#define MIC_SAMPLE_RATE			16000//set sample for mic
+
+
+#define MIC_CHANNLE_COUNT		1   //1 or 2
+#define	MIC_ENOCDER_ENABLE		0
+
+
+#define SPK_CHANNLE_COUNT		2
+#define SPK_RESOLUTION_BIT		16
+
+#define MIC_SAMPLING_RATE   (MIC_SAMPLE_RATE== 8000) ?  AUDIO_8K :((MIC_SAMPLE_RATE== 16000) ?  AUDIO_16K :(  (MIC_SAMPLE_RATE== 32000) ?  AUDIO_32K :( (MIC_SAMPLE_RATE== 48000) ? AUDIO_48K : AUDIO_16K) ) )
+#define MIC_MONO_STEREO       ((MIC_CHANNLE_COUNT==1) ?  MONO_BIT_16 :STEREO_BIT_16 )
+
+#define	MIC_BUFFER_SIZE			8192//2048
+#define MIC_DMA_CHN             DMA2
+
+
+u16		iso_in_buff[MIC_BUFFER_SIZE];
+#include "pcm_fifo.h"
+FIFI_WITH_SEM kwd_fifo;
+
+
+#include "libaid_awaken.h"
+#define KWD_LEN    320
+#define KWD_SAMPLE_RATE 16000
+static short kwd_data[KWD_LEN];
+static int wakeup_times[40] = {0,0,0,0,0,0,0,0,0,0};
+
+volatile u32		iso_in_w = 0;
+volatile u32  	     iso_in_r = 0;
+u32		num_iso_in = 0;
+/**
+ * @brief     This function serves to send data to USB. only adaptive mono 16bit
+ * @param[in] audio_rate - audio rate. This value is matched with usb_default.h :MIC_SAMPLE_RATE.
+ * @return    none.
+ */
+
+
+int audio_tx_data_to_kwd_buf(unsigned int audio_rate)
+{
+	unsigned char length = 0;
+	iso_in_w = ((audio_get_rx_dma_wptr (MIC_DMA_CHN) - (u32)iso_in_buff) >> 1);
+	switch(audio_rate)
+	{
+		case 	8000:	length = 80;break;
+		case	16000:	length = 160;break;
+		default:		length = 320;break;
+	}
+	for (u8 i=0; i<length&& iso_in_r != iso_in_w ; i++)
+	{
+		short md = iso_in_buff[iso_in_r++ &(MIC_BUFFER_SIZE-1)];
+
+		Fifo_Write(&kwd_fifo, &md, sizeof(short));
+
+	}
+
+	return length;
+}
+void timer0_irq_handler(void)
+{
+	if(timer_get_irq_status(TMR_STA_TMR0))
+	{
+		timer_clr_irq_status(TMR_STA_TMR0);
+        audio_tx_data_to_kwd_buf(KWD_SAMPLE_RATE);
+	}
+}
+
+#endif
+
 void main_loop ()
 {
 	static u32 tick_loop;
 
 	tick_loop ++;
+	
+#if SPEECH_ENABLE
+	if(Fifo_Read(&kwd_fifo, kwd_data, sizeof(short)*KWD_LEN, sizeof(short)*KWD_LEN) !=0 )
+	{
+		int ret = AidAwakenProcess(kwd_data,NULL,KWD_LEN);
+		/*
+			ret值:
+			打开灯光				9
+			关闭灯光                10
+			打开吊灯				11
+			关闭吊灯       		    12
+			打开客厅灯				15
+			关闭客厅灯				16	
+			打开卧室灯				17
+			关闭卧室灯				18
+		*/
+		if(ret > 0)
+		{
+			if(ret == 9){
+				light_onoff_all(1);
+			}else if(ret == 10){
+				light_onoff_all(0);
+			}
+			printf("W[%d]T[%d]A[%d]\r\n", ret, ++wakeup_times[ret-1], ++wakeup_times[9]);
+		}
+		else if(ret == ERR_MAX_LIMIT)
+		{
+		}
+	}
+#endif
+
 #if (BLT_SOFTWARE_TIMER_ENABLE)
 	blt_soft_timer_process(MAINLOOP_ENTRY);
 #endif
@@ -491,6 +601,33 @@ void test_ecdsa_sig_verify2()
 
 void user_init()
 {
+	
+#if SPEECH_ENABLE
+	audio_set_codec_supply();
+	delay_ms(1000);
+	AidAwakenInit(NULL,KWD_SAMPLE_RATE,false);
+	delay_ms(1000);
+	Fifo_Init(&kwd_fifo, 8192);
+	
+#if(AUDIO_IN_MODE==AUDIO_LINE_IN)
+	audio_init(LINE_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
+	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
+#elif(AUDIO_IN_MODE==AUDIO_DMIC_IN)
+	audio_set_codec_in_path_a_d_gain(CODEC_IN_D_GAIN_16_DB,CODEC_IN_A_GAIN_8_DB);
+	audio_set_dmic_pin(DMIC_GROUPB_B2_DAT_B3_B4_CLK);
+	audio_init(DMIC_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
+	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
+#elif(AUDIO_IN_MODE==AUDIO_AMIC_IN)
+	audio_init(AMIC_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
+	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
+#endif
+
+	plic_interrupt_enable(IRQ4_TIMER0);
+	timer_set_mode(TIMER0, TIMER_MODE_SYSCLK, 0, 10*sys_clk.pclk*1000);
+	timer_start(TIMER0);
+	core_interrupt_enable();
+#endif
+		
 //random number generator must be initiated here( in the beginning of user_init_nromal)
 	//when deepSleep retention wakeUp, no need initialize again
 	random_generator_init();  //this is must
@@ -619,6 +756,7 @@ void user_init()
 	rf_pa_init();
 	bls_app_registerEventCallback (BLT_EV_FLAG_CONNECT, (blt_event_callback_t)&mesh_ble_connect_cb);
 	blc_hci_registerControllerEventHandler(app_event_handler);		//register event callback
+
 	//bls_hci_mod_setEventMask_cmd(0xffff);			//enable all 15 events,event list see ble_ll.h
 	bls_set_advertise_prepare (app_advertise_prepare_handler);
 	//bls_set_update_chn_cb(chn_conn_update_dispatch);
@@ -644,7 +782,9 @@ void user_init()
 				telink_record_clean_cpy();// trigger clean recycle ,and it will not need to clean in the conn state
 			}
 		#else
+		#if !SPEECH_ENABLE
 		bls_ota_clearNewFwDataArea();	 //must
+		#endif
 		#endif
 	}
 	//blc_ll_initScanning_module(tbl_mac);

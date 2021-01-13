@@ -46,7 +46,7 @@
 #include "mesh_config.h"
 #include "directed_forwarding.h"
 #include "certify_base/certify_base_crypto.h"
-#include "application/print/u_printf.h"
+#include "application/print/printf.h"
 
 #include "./mi_api/mijia_pub_proc.h"
 

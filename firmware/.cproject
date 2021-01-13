@@ -194,6 +194,7 @@
 								<option id="nds.c.link.option.virtualhosting.1859610391" name="Virtual Hosting (-mvh)" superClass="nds.c.link.option.virtualhosting" value="false" valueType="boolean"/>
 								<option id="nds.c.link.option.libs.2136120284" name="Libraries (-l)" superClass="nds.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="m"/>
+									<listOptionValue builtIn="false" value="aid_awaken_switch_lumin_v2"/>
 									<listOptionValue builtIn="false" value="dsp"/>
 									<listOptionValue builtIn="false" value="sig_mesh_9518"/>
 									<listOptionValue builtIn="false" value="lt_9518"/>

@@ -326,7 +326,7 @@ void light_pwm_init()
     #endif
 
     #if PWM_CLK_DIV_LIGHT
-    reg_pwm_clk = PWM_CLK_DIV_LIGHT;    // default value of reg_pwm_clk is 0.
+    //reg_pwm_clk = PWM_CLK_DIV_LIGHT;    // default value of reg_pwm_clk is 0.
     #endif
 	
 	

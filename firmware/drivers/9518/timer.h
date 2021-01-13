@@ -97,10 +97,97 @@ typedef enum{
 	TIMER_MODE_TICK			=3,
 }timer_mode_e;
 
+typedef enum{
+	TMR_STA_TMR0   =		BIT(0),
+    TMR_STA_TMR1   =		BIT(1),
+}time_irq_e;
 
 /**********************************************************************************************************************
  *                                      global function prototype                                                     *
  *********************************************************************************************************************/
+
+/*
+ * @brief    This function refer to get timer irq status.
+ * @param[in] status - variable of enum to select the timer interrupt source.
+ * @return   the status of timer0/timer1.
+ */
+static inline unsigned char timer_get_irq_status(time_irq_e status)
+{
+    return  reg_tmr_sta&status ;
+}
+
+/*
+ * @brief     This function refer to clr timer0 irq status.
+ * @param[in] status - variable of enum to select the timerinterrupt source.
+ * @return    none
+ */
+static inline void timer_clr_irq_status(time_irq_e status)
+{
+		reg_tmr_sta= status;
+}
+
+
+/*
+ * @brief   This function refer to get timer0 tick.
+ * @return  none
+ */
+static inline  u32 timer0_get_gpio_width(void)
+{
+	 return reg_tmr0_tick;
+
+}
+
+
+/*
+ * @brief   This function refer to get timer1 tick.
+ * @return  none
+ */
+static inline u32 timer1_get_gpio_width(void)
+{
+	return reg_tmr1_tick;
+
+}
+
+
+/*
+ * @brief   This function refer to set timer0 tick .
+ * @param[in] tick - the tick of timer0
+ * @return  none
+ */
+static inline void timer0_set_tick(u32 tick)
+{
+	reg_tmr0_tick = tick;
+}
+
+/*
+ * @brief   This function refer to get timer0 tick.
+ * @return  none
+ */
+static inline u32 timer0_get_tick(void)
+{
+	return reg_tmr0_tick ;
+}
+
+
+/*
+ * @brief   This function refer to set timer1 tick.
+ * @param[in] tick - the tick of timer1
+ * @return  none
+ */
+static inline void timer1_set_tick(u32 tick)
+{
+	reg_tmr1_tick = tick;
+}
+
+/*
+ * @brief   This function refer to get timer1 tick.
+ * @return  none
+ */
+static inline u32 timer1_get_tick(void)
+{
+	return reg_tmr1_tick;
+}
+
 
 /**
  * @brief     the specifed timer start working.
@@ -128,6 +215,16 @@ void timer_set_mode(timer_type_e type, timer_mode_e mode,unsigned int init_tick,
  * @return    none
  */
 void timer_gpio_init(timer_type_e type, gpio_pin_e pin, gpio_pol_e pol );
+
+
+
+/**
+ * @brief     the specifed timer stop working.
+ * @param[in] type - select the timer to stop.
+ * @return    none
+ */
+void timer_stop(timer_type_e type);
+
 
 
 #endif /* TIMER_H_ */
