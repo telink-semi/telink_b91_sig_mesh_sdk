@@ -264,7 +264,7 @@ extern "C" {
 #define	SW2_GPIO				GPIO_PD1
 #endif
 
-#define SPEECH_ENABLE			1
+#define SPEECH_ENABLE			0
 
 /////////////////// Clock  /////////////////////////////////
 
@@ -295,11 +295,20 @@ enum{
 #define XIAOMI_MODULE_ENABLE	MI_API_ENABLE
 #define XIAOMI_TEST_CODE_ENABLE 	0
 
-#define GPIO_LED_WHITE					GPIO_PB6
-#define GPIO_LED_GREEN					GPIO_PB5
-#define GPIO_LED_BLUE					GPIO_PB4
-#define GPIO_LED_RED					GPIO_PB7
+#define C1T21_3A_1_1	0
 
+#if C1T21_3A_1_1
+#define GPIO_LED_WHITE					GPIO_PB6// 1
+#define GPIO_LED_GREEN					GPIO_PB0// 5
+#define GPIO_LED_BLUE					GPIO_PB7// 2
+#define GPIO_LED_RED					GPIO_PB4// 0
+#else
+#define GPIO_LED_WHITE					GPIO_PB6// 3
+#define GPIO_LED_GREEN					GPIO_PB5// 1
+#define GPIO_LED_BLUE					GPIO_PB4// 0
+#define GPIO_LED_RED					GPIO_PB7// 2
+
+#endif
 //---------------  LED / PWM
 
 #define PWM_R       GPIO_LED_RED		//red
@@ -307,7 +316,23 @@ enum{
 #define PWM_B       GPIO_LED_BLUE		//blue
 #define PWM_W       GPIO_LED_WHITE		//white
 
+#if C1T21_3A_1_1	
+#define PWM_FUNC_R  AS_PWM0  // AS_PWM_SECOND
+#define PWM_FUNC_G  AS_PWM5  // AS_PWM_SECOND
+#define PWM_FUNC_B  AS_PWM2  // AS_PWM_SECOND
+#define PWM_FUNC_W  AS_PWM1  // AS_PWM_SECOND
 
+#define PWMID_R     0
+#define PWMID_G     5
+#define PWMID_B     2
+#define PWMID_W     1
+                    
+#define PWM_INV_R   0
+#define PWM_INV_G   0
+#define PWM_INV_B   0
+#define PWM_INV_W   0
+
+#else
 #define PWM_FUNC_R  AS_PWM2  // AS_PWM_SECOND
 #define PWM_FUNC_G  AS_PWM1  // AS_PWM_SECOND
 #define PWM_FUNC_B  AS_PWM0  // AS_PWM_SECOND
@@ -322,7 +347,7 @@ enum{
 #define PWM_INV_G   0
 #define PWM_INV_B   0
 #define PWM_INV_W   0
-
+#endif
 #ifndef GPIO_LED
 #define GPIO_LED	PWM_R
 #endif

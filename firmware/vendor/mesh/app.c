@@ -479,15 +479,39 @@ void main_loop ()
 			´ò¿ªÎÔÊÒµÆ				17
 			¹Ø±ÕÎÔÊÒµÆ				18
 		*/
+		u8 data[4]={0x00,0x00,0x00,0x00};
+		u16 adr=0;
 		if(ret > 0)
 		{
 			if(ret == 9){
-				light_onoff_all(1);
+				data[0]=1;
+				adr = 0xffff;
 			}else if(ret == 10){
-				light_onoff_all(0);
+				data[0]=0;
+				adr = 0xffff;
+			}else if (ret == 11){
+				data[0]=1;
+				adr = 0xc007;
+			}else if(ret == 12){
+				data[0]=0;
+				adr = 0xc007;
+			}else if(ret == 15){
+				data[0]=1;
+				adr = 0xc000;
+			}else if(ret == 16){
+				data[0]=0;
+				adr = 0xc000;
+			}else if (ret == 17){
+				data[0]=1;
+				adr = 0xc002;
+			}else if (ret ==18){
+				data[0]=0;
+				adr = 0xc002;
 			}
-			printf("W[%d]T[%d]A[%d]\r\n", ret, ++wakeup_times[ret-1], ++wakeup_times[9]);
-		}
+			if(adr !=0){
+				mesh_tx_cmd2normal_primary(G_ONOFF_SET,data,sizeof(data),adr,0);
+			}
+		}				
 		else if(ret == ERR_MAX_LIMIT)
 		{
 		}

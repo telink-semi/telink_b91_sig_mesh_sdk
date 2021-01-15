@@ -26,7 +26,7 @@ int Fifo_Write(FIFI_WITH_SEM *fifo, char* data, int len)
 	int len1, len2;
 	if(Fifo_Data_Len(fifo) + len > fifo->fifo_max_len)
 	{
-		printf("len=%d data_len=%d to write bigger than fifo_max_len=%d, pointer=%p.\n", len, Fifo_Data_Len(fifo), fifo->fifo_max_len, fifo);
+		//printf("len=%d data_len=%d to write bigger than fifo_max_len=%d, pointer=%p.\n", len, Fifo_Data_Len(fifo), fifo->fifo_max_len, fifo);
 		//printf("out\n");
 		return -1; //pull whole data to fifo, or discrad it
 		len = fifo->fifo_max_len - Fifo_Data_Len(fifo);
