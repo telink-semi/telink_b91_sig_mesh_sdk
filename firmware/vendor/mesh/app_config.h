@@ -169,9 +169,11 @@ extern "C" {
 #define DUAL_MODE_WITH_TLK_MESH_EN  0   // dual mode as slave with Telink mesh
 #endif
 
+#define SPEECH_ENABLE			0
+
 /////////////////// mesh project config /////////////////////////////////
 #ifndef TRANSITION_TIME_DEFAULT_VAL
-#if (MESH_RX_TEST || (!MD_DEF_TRANSIT_TIME_EN))
+#if (MESH_RX_TEST || (!MD_DEF_TRANSIT_TIME_EN) || SPEECH_ENABLE)
 #define TRANSITION_TIME_DEFAULT_VAL (0)
 #else
 	#if MI_API_ENABLE
@@ -264,7 +266,6 @@ extern "C" {
 #define	SW2_GPIO				GPIO_PD1
 #endif
 
-#define SPEECH_ENABLE			0
 
 /////////////////// Clock  /////////////////////////////////
 
