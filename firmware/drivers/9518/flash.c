@@ -215,7 +215,7 @@ _attribute_text_sec_ void flash_write_page(unsigned long addr, unsigned long len
 	do{
 		nw = len > ns ? ns : len;
 		__asm__("csrci 	mmisc_ctl,8");	//disable BTB
-		flash_write_page_ram(addr,len,buf);
+		flash_write_page_ram(addr,nw,buf);
 		__asm__("csrsi 	mmisc_ctl,8");	//enable BTB
 		ns = PAGE_SIZE;
 		addr += nw;
