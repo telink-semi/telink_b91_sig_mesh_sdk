@@ -75,7 +75,7 @@ void trng_init(void);
 unsigned int trng_rand(void);
 
 /*******************************      BLE Stack Use     ******************************/
-//#define rand	trng_rand
+#define rand	trng_rand
 #define random_generator_init  trng_init
 void generateRandomNum(int len, unsigned char *data);
 #endif
