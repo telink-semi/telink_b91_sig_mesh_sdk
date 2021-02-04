@@ -628,9 +628,9 @@ void user_init()
 	
 #if SPEECH_ENABLE
 	audio_set_codec_supply();
-	delay_ms(1000);
+	//delay_ms(1000);
 	AidAwakenInit(NULL,KWD_SAMPLE_RATE,false);
-	delay_ms(1000);
+	//delay_ms(1000);
 	Fifo_Init(&kwd_fifo, 8192);
 	
 #if(AUDIO_IN_MODE==AUDIO_LINE_IN)
