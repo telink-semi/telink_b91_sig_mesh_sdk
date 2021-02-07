@@ -333,29 +333,16 @@ void light_pwm_init()
     foreach(i, LIGHT_CNT){
     	foreach_arr(k,light_res_hw[0]){
 			u16 level_def = 0;	// PWM_MAX_TICK;	 //
-			const light_res_hw_t *p_hw = &light_res_hw[i][k];
-			/*
-	        pwm_set(p_hw->id, PWM_MAX_TICK, p_hw->invert ? (PWM_MAX_TICK - level_def) : level_def);
-	        // light_dim_refresh(i);
-	        pwm_start(p_hw->id);
-	        #if((MCU_CORE_TYPE==MCU_CORE_8258) || \
-				(MCU_CORE_TYPE==MCU_CORE_8278)|| \
-				(MCU_CORE_TYPE==MCU_CORE_9518))
-	        gpio_set_func(p_hw->gpio, p_hw->func);
-	        #else
-	        gpio_set_func(p_hw->gpio, AS_PWM);
-	        #endif
-	        */
+			const light_res_hw_t *p_hw = &light_res_hw[i][k];	       
 	        gpio_function_en(p_hw->gpio);
-     		gpio_output_en(p_hw->gpio);
-     		gpio_input_dis(p_hw->gpio);
-	        pwm_set_pin(p_hw->gpio);
+     		//gpio_output_en(p_hw->gpio);
+     		//gpio_input_dis(p_hw->gpio);
 			pwm_set_clk((unsigned char) (sys_clk.pclk*1000*1000/PWM_PCLK_SPEED-1));
-			pwm_set_tcmp(p_hw->id,(PWM_MAX_TICK/2));
+			pwm_set_tcmp(p_hw->id,(p_hw->invert ? (PWM_MAX_TICK - level_def) : level_def));
 	 		pwm_set_tmax(p_hw->id,PWM_MAX_TICK);
 			pwm_start(p_hw->id);
+			pwm_set_pin(p_hw->gpio);	
         }
-        
         int onoff_present = light_g_onoff_present_get(i);
         #if (DUAL_MODE_ADAPT_EN || DUAL_MODE_WITH_TLK_MESH_EN)
         if(DUAL_MODE_SUPPORT_ENABLE == dual_mode_state){

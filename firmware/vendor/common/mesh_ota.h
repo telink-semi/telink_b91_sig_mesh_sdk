@@ -23,7 +23,9 @@
 #pragma once
 
 #include "tl_common.h"
+
 #include "proj_lib/sig_mesh/app_mesh.h"
+#include "proj_lib/ble/blt_config.h"
 
 // ------
 #ifndef CEIL_DIV

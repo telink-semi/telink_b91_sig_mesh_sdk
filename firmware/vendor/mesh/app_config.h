@@ -92,14 +92,14 @@ extern "C" {
 //#define	__DEBUG_PRINT__			0
 
 #if DUAL_MESH_ZB_BL_EN
-#define FLASH_1M_ENABLE         1
+#define FLASH_2M_ENABLE         1
 #elif DUAL_VENDOR_EN
-#define FLASH_1M_ENABLE         0
+#define FLASH_2M_ENABLE         1
 #else
-#define FLASH_1M_ENABLE         1
+#define FLASH_2M_ENABLE         0
 #endif
 
-#if FLASH_1M_ENABLE
+#if FLASH_2M_ENABLE
 #if DUAL_MESH_ZB_BL_EN
 #define PINGPONG_OTA_DISABLE    1 // it can disable only when 1M flash.
 #else
@@ -299,7 +299,7 @@ enum{
 #define C1T21_3A_1_1	0
 
 #if C1T21_3A_1_1
-#define GPIO_LED_WHITE					GPIO_PB6// 1
+#define GPIO_LED_WHITE					GPIO_PB1// 1
 #define GPIO_LED_GREEN					GPIO_PB0// 5
 #define GPIO_LED_BLUE					GPIO_PB7// 2
 #define GPIO_LED_RED					GPIO_PB4// 0
@@ -321,12 +321,12 @@ enum{
 #define PWM_FUNC_R  AS_PWM0  // AS_PWM_SECOND
 #define PWM_FUNC_G  AS_PWM5  // AS_PWM_SECOND
 #define PWM_FUNC_B  AS_PWM2  // AS_PWM_SECOND
-#define PWM_FUNC_W  AS_PWM1  // AS_PWM_SECOND
+#define PWM_FUNC_W  AS_PWM3  // AS_PWM_SECOND
 
 #define PWMID_R     0
 #define PWMID_G     5
 #define PWMID_B     2
-#define PWMID_W     1
+#define PWMID_W     3
                     
 #define PWM_INV_R   0
 #define PWM_INV_G   0

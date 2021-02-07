@@ -63,12 +63,14 @@
 #endif
 
 /**************************** 512 K Flash *****************************/
+#if 0   // no 512k for B91
 #ifndef		CFG_ADR_MAC_512K_FLASH
 #define		CFG_ADR_MAC_512K_FLASH								0x7F000	//Eagle and later IC
 #endif
 
 #ifndef		CFG_ADR_CALIBRATION_512K_FLASH
 #define		CFG_ADR_CALIBRATION_512K_FLASH						0x7E000	//Eagle and later IC
+#endif
 #endif
 
 /**************************** 1 M Flash *******************************/

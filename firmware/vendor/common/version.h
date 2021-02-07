@@ -31,7 +31,7 @@
 
 #define VERSION_GET(low, high)      ((low)|(high << 8))
 
-#define FW_VERSION_TELINK_RELEASE   (VERSION_GET(0x34, 0x30))       // user can't modify
+#define FW_VERSION_TELINK_RELEASE   (VERSION_GET(0x34, 0x31))       // user can't modify
 
 #define PID_UNKNOW              (0x0000)
 // ------ light ------

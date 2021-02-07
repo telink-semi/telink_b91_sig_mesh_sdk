@@ -465,57 +465,61 @@ void main_loop ()
 	tick_loop ++;
 	
 #if SPEECH_ENABLE
-	if(Fifo_Read(&kwd_fifo, kwd_data, sizeof(short)*KWD_LEN, sizeof(short)*KWD_LEN) !=0 )
-	{
-		int ret = AidAwakenProcess(kwd_data,NULL,KWD_LEN);
-		/*
-			ret值:
-			打开灯光				9
-			关闭灯光                10
-			打开吊灯				11
-			关闭吊灯       		    12
-			打开客厅灯				15
-			关闭客厅灯				16	
-			打开卧室灯				17
-			关闭卧室灯				18
-		*/
-		u8 data[4]={0x00,0x00,0x00,0x00};
-		u16 adr=0;
-		if(ret > 0)
+		if(Fifo_Read(&kwd_fifo, kwd_data, sizeof(short)*KWD_LEN, sizeof(short)*KWD_LEN) !=0 )
 		{
-			if(ret == 9){
-				data[0]=1;
-				adr = 0xffff;
-			}else if(ret == 10){
-				data[0]=0;
-				adr = 0xffff;
-			}else if (ret == 11){
-				data[0]=1;
-				adr = 0xc007;
-			}else if(ret == 12){
-				data[0]=0;
-				adr = 0xc007;
-			}else if(ret == 15){
-				data[0]=1;
-				adr = 0xc000;
-			}else if(ret == 16){
-				data[0]=0;
-				adr = 0xc000;
-			}else if (ret == 17){
-				data[0]=1;
-				adr = 0xc002;
-			}else if (ret ==18){
-				data[0]=0;
-				adr = 0xc002;
+			int ret;
+			ret = AidAwakenProcess(kwd_data,NULL,KWD_LEN);
+			 
+			/*
+			ret:
+			打开灯光				 9	  
+			关闭灯光				10	
+			打开吊灯				11    
+			关闭吊灯 				12	  
+			打开客厅灯			  	15	
+			关闭客厅灯	  			16	 
+			打开卧室灯 			 	17    
+			关闭卧室灯			   	18
+			*/
+			u8 data[4]={0x00,0x00,0x00,0x00};
+			u16 adr=0;
+			if(ret > 0)
+			{
+				if(ret == 9){
+					data[0]=1;
+					adr = 0xffff;
+				}else if(ret == 10){
+					data[0]=0;
+					adr = 0xffff;
+				}else if (ret == 11){
+					data[0]=1;
+					adr = 0xc007;
+				}else if(ret == 12){
+					data[0]=0;
+					adr = 0xc007;
+				}else if(ret == 15){
+					data[0]=1;
+					adr = 0xc000;
+				}else if(ret == 16){
+					data[0]=0;
+					adr = 0xc000;
+				}else if (ret == 17){
+					data[0]=1;
+					adr = 0xc002;
+				}else if (ret ==18){
+					data[0]=0;
+					adr = 0xc002;
+				}
+				if(adr !=0){
+					mesh_tx_cmd2normal_primary(G_ONOFF_SET,data,sizeof(data),adr,0);
+				}
+				
+				//printf("W[%d]T[%d]A[%d]\r\n", ret, ++wakeup_times[ret-1], ++wakeup_times[9]);
 			}
-			if(adr !=0){
-				mesh_tx_cmd2normal_primary(G_ONOFF_SET,data,sizeof(data),adr,0);
+			else if(ret == ERR_MAX_LIMIT)
+			{
 			}
-		}				
-		else if(ret == ERR_MAX_LIMIT)
-		{
 		}
-	}
 #endif
 
 #if (BLT_SOFTWARE_TIMER_ENABLE)
@@ -628,9 +632,9 @@ void user_init()
 	
 #if SPEECH_ENABLE
 	audio_set_codec_supply();
-	delay_ms(1000);
+	//delay_ms(1000);
 	AidAwakenInit(NULL,KWD_SAMPLE_RATE,false);
-	delay_ms(1000);
+	//delay_ms(1000);
 	Fifo_Init(&kwd_fifo, 8192);
 	
 #if(AUDIO_IN_MODE==AUDIO_LINE_IN)
@@ -651,7 +655,7 @@ void user_init()
 	timer_start(TIMER0);
 	core_interrupt_enable();
 #endif
-		
+
 //random number generator must be initiated here( in the beginning of user_init_nromal)
 	//when deepSleep retention wakeUp, no need initialize again
 	random_generator_init();  //this is must
@@ -780,7 +784,6 @@ void user_init()
 	rf_pa_init();
 	bls_app_registerEventCallback (BLT_EV_FLAG_CONNECT, (blt_event_callback_t)&mesh_ble_connect_cb);
 	blc_hci_registerControllerEventHandler(app_event_handler);		//register event callback
-
 	//bls_hci_mod_setEventMask_cmd(0xffff);			//enable all 15 events,event list see ble_ll.h
 	bls_set_advertise_prepare (app_advertise_prepare_handler);
 	//bls_set_update_chn_cb(chn_conn_update_dispatch);
@@ -806,9 +809,7 @@ void user_init()
 				telink_record_clean_cpy();// trigger clean recycle ,and it will not need to clean in the conn state
 			}
 		#else
-		#if !SPEECH_ENABLE
 		bls_ota_clearNewFwDataArea();	 //must
-		#endif
 		#endif
 	}
 	//blc_ll_initScanning_module(tbl_mac);

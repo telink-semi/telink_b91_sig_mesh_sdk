@@ -117,10 +117,10 @@ _attribute_data_retention_	ota_service_t blcOta;
 
 
 
-#if (FLASH_1M_ENABLE && PINGPONG_OTA_DISABLE)
+#if (FLASH_2M_ENABLE && PINGPONG_OTA_DISABLE)
 _attribute_data_retention_	int 	ota_program_bootAddr = FLASH_ADR_UPDATE_NEW_FW; // it will be used in cpu_wakeup init, and set value for ota_program_offset_
 #else
-_attribute_data_retention_	int 	ota_program_bootAddr = 0x40000;
+_attribute_data_retention_	int 	ota_program_bootAddr = 0x80000;
 #endif
 
 _attribute_data_retention_	u32 	ota_program_offset = 0;

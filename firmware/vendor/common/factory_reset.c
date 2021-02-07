@@ -321,7 +321,13 @@ int factory_reset_cnt_check ()
 #endif
 #endif
 
-#if FLASH_1M_ENABLE
+#if XIAOMI_MODULE_ENABLE
+STATIC_ASSERT(MI_BLE_MESH_CER_ADR == (FLASH_ADR_PAR_USER_MAX - 4096));
+#endif
+
+#if FLASH_2M_ENABLE
+#error TODO
+
 int factory_reset() // 1M flash
 {
 	u32 r = irq_disable ();
@@ -384,19 +390,18 @@ int factory_reset(){
 		}
 	}
 	
-	for(int i = 1; i < (FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096; ++i){
+	for(int i = 0; i < (FLASH_ADR_PAR_USER_MAX - (FLASH_ADR_AREA_2_END)) / 4096; ++i){
+        u32 adr = (FLASH_ADR_AREA_2_END + i*0x1000);
 		#if XIAOMI_MODULE_ENABLE
-		if(i < (((FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096) - 1)){ // the last sector is FLASH_ADR_MI_AUTH
-            u32 adr = (CFG_SECTOR_ADR_CALIBRATION_CODE + i*0x1000);
-		    #if DUAL_VENDOR_EN
-		    if(adr != FLASH_ADR_THREE_PARA_ADR)
-		    #endif
-		    {
-			    flash_erase_sector(adr);
-			}
+        if((adr != MI_BLE_MESH_CER_ADR) // the last sector is FLASH_ADR_MI_AUTH
+	        #if DUAL_VENDOR_EN
+	    &&(adr != FLASH_ADR_THREE_PARA_ADR)
+	        #endif
+	    ){
+		    flash_erase_sector(adr);
 		}
 		#else
-		//flash_erase_sector(CFG_SECTOR_ADR_CALIBRATION_CODE + i*0x1000);
+		adr = adr; //flash_erase_sector(adr);
 		#endif
 	}
 

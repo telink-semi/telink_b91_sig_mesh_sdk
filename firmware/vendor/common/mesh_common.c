@@ -86,12 +86,14 @@ asm(".equ __PM_DEEPSLEEP_RETENTION_ENABLE,    0");
 #endif
 asm(".global     __PM_DEEPSLEEP_RETENTION_ENABLE");
 
-#if FLASH_1M_ENABLE && (0 == FW_START_BY_BOOTLOADER_EN)
+#if 0
+#if FLASH_2M_ENABLE && (0 == FW_START_BY_BOOTLOADER_EN)
 asm(".equ __FLASH_512K_ENABLE,    0");
 #else
 asm(".equ __FLASH_512K_ENABLE,    1");
 #endif
 asm(".global     __FLASH_512K_ENABLE");
+#endif
 
 #if __PROJECT_BOOTLOADER__
 asm(".equ __FW_OFFSET,      0"); // must be 0
@@ -137,12 +139,12 @@ STATIC_ASSERT(TRANSMIT_CNT_DEF < 8);
 STATIC_ASSERT(TRANSMIT_CNT_DEF_RELAY < 8);
 STATIC_ASSERT(sizeof(mesh_scan_rsp_t) <= 31);
 #if (CHIP_TYPE == CHIP_TYPE_8269)
-STATIC_ASSERT((0 == FLASH_1M_ENABLE) && (0 == PINGPONG_OTA_DISABLE));
+STATIC_ASSERT((0 == FLASH_2M_ENABLE) && (0 == PINGPONG_OTA_DISABLE));
 #endif
 #if (PINGPONG_OTA_DISABLE)
-STATIC_ASSERT(1 == FLASH_1M_ENABLE);
+STATIC_ASSERT(1 == FLASH_2M_ENABLE);
 #else
-STATIC_ASSERT(FLASH_ADR_AREA_FIRMWARE_END <= 0x3F000);
+STATIC_ASSERT(FLASH_ADR_AREA_FIRMWARE_END <= 0x7F000);
 #endif
 #ifdef FLASH_ADR_AREA_FIRMWARE_END
 STATIC_ASSERT(FLASH_ADR_AREA_FIRMWARE_END%0x1000 == 0);
@@ -1184,7 +1186,7 @@ void set_firmware_type_init()
 #if (DUAL_MESH_ZB_BL_EN)
 #define TLK_MESH_NO_TYPE_CHECK_EN   0 // must 0
 #else
-#define TLK_MESH_NO_TYPE_CHECK_EN   ((0 == FLASH_1M_ENABLE) && (CFG_SECTOR_ADR_MAC_CODE == CFG_ADR_MAC_512K_FLASH))
+#define TLK_MESH_NO_TYPE_CHECK_EN   0 // always 0 for B91 // 
 #endif
 
 u8 proc_telink_mesh_to_sig_mesh(void)
@@ -1192,8 +1194,8 @@ u8 proc_telink_mesh_to_sig_mesh(void)
     #if (DUAL_VENDOR_EN)
     return 1;
     #endif
-    
-	u32 mesh_type = *(u32 *) FLASH_ADR_MESH_TYPE_FLAG;
+    u32 mesh_type;
+	flash_read_page(FLASH_ADR_MESH_TYPE_FLAG,sizeof(mesh_type),(u8*)&mesh_type);
 
 	#if DUAL_MODE_ADAPT_EN
     LOG_MSG_LIB(TL_LOG_NODE_SDK,0, 0,"sdk type 0x%x:0x%x", FLASH_ADR_MESH_TYPE_FLAG, mesh_type);

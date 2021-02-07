@@ -74,8 +74,8 @@ extern "C" {
 
 
 // default setting
-#ifndef FLASH_1M_ENABLE
-#define FLASH_1M_ENABLE	        0
+#ifndef FLASH_2M_ENABLE
+#define FLASH_2M_ENABLE	        0
 #endif
 #ifndef PINGPONG_OTA_DISABLE
 #define PINGPONG_OTA_DISABLE    0

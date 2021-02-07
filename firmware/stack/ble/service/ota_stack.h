@@ -35,7 +35,7 @@
 #define BLE_OTA_FW_CHECK_EN					1
 #endif
 
-#define FW_MAX_SIZE							0x40000			//256K
+#define FW_MAX_SIZE							(FW_SIZE_MAX_K * 1024) // 0x40000			//256K
 
 
 
