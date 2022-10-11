@@ -7,7 +7,7 @@ V3.3.3.6
 1. remove inIndex in JSON storage
 2. update icon generation by check pid bitmask
 3. update app icon
-4. support B91 SIG MESH SDK 和 B85 SIG MESH SDK
+4. support B91 SIG MESH SDK and B85 SIG MESH SDK
 
 ----------------
 
