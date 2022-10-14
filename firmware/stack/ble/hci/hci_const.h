@@ -1,36 +1,25 @@
 /********************************************************************************************************
- * @file	hci_const.h
+ * @file     hci_const.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par		Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd.
- *			All rights reserved.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			The information contained herein is confidential property of Telink
- *          Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *          of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *          Co., Ltd. and the licensee or the terms described here-in. This heading
- *          MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or  
- *          alter) any information contained herein in whole or in part except as expressly authorized  
- *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible  
- *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)  
- *          or alteration(s).
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
- *          Licensees are granted free, non-transferable use of the information in this
- *          file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
- *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-/*
- * hci_const.h
- *
- *  Created on: 2016-9-20
- *      Author: Administrator
- */
 
 #ifndef HCI_CONST_H_
 #define HCI_CONST_H_
@@ -106,7 +95,7 @@
 
 
 
-#define HCI_SUB_EVT_LE_CONNECTION_ESTABLISH					         0xFF   //private
+#define HCI_SUB_EVT_LE_CONNECTION_ESTABLISH					         0xFF   //Telink private
 
 
 
@@ -122,6 +111,7 @@
 #define HCI_EVT_MASK_REMOTE_NAME_REQUEST_COMPLETE                	 0x0000000040
 #define HCI_EVT_MASK_ENCRYPTION_CHANGE                           	 0x0000000080
 #define HCI_EVT_MASK_CHANGE_CONECTION_LINK_KEY_COMPLETE              0x0000000100
+#define HCI_EVT_MASK_CHANGE_CONNECTION_LINK_KEY_COMPLETE   			 0x0000000100	
 #define HCI_EVT_MASK_MASTER_LINK_KEY_COMPLETE                        0x0000000200
 #define HCI_EVT_MASK_READ_REMOTE_SUPPORTED_FEATURES_COMPLETE     	 0x0000000400
 #define HCI_EVT_MASK_READ_REMOTE_VERSION_INFORMATION_COMPLETE    	 0x0000000800     //
@@ -171,7 +161,7 @@
 
 
 
-#define HCI_LE_EVT_MASK_CONNECTION_ESTABLISH                         0x80000000  //private
+#define HCI_LE_EVT_MASK_CONNECTION_ESTABLISH                         0x80000000  //TODO
 
 
 
@@ -290,7 +280,7 @@
 #define HCI_CMD_LE_TRANSMITTER_TEST                                  0x1E
 #define HCI_CMD_LE_TEST_END                                          0x1F
 //core_4.0 end
-//core_4.2 begin
+//core_4.1 begin
 #define HCI_CMD_LE_REMOTE_CONNECTION_PARAM_REQ_REPLY             	 0x20
 #define HCI_CMD_LE_REMOTE_CONNECTION_PARAM_REQ_NEGATIVE_REPLY    	 0x21
 //core_4.1 end
@@ -403,7 +393,7 @@
 #define HCI_CMD_VENDOR_OPCODE_OGF									 0xFC  //0x3f <<2 = 0xFC
 //-- OCF --
 #define HCI_TELINK_READ_REG											 0x01
-#define HCI_TELINK_WRTIE_REG										 0x02
+#define HCI_TELINK_WRITE_REG										 0x02
 #define HCI_TELINK_SET_TX_PWR										 0x03
 #define HCI_TELINK_REBOOT_MCU										 0x04
 #define HCI_TELINK_SET_RXTX_DATA_LEN								 0x40

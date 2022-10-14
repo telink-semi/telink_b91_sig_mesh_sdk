@@ -1,31 +1,28 @@
 /********************************************************************************************************
- * @file     ble_ll_ota.h 
+ * @file	ble_ll_ota.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #pragma once 
-#include "tl_common.h"
-#if (MCU_CORE_TYPE == MCU_CORE_9518)
-#include "stack/ble/service/ota_stack.h"
-#include "stack/ble/service/ota.h"
-#else
 
 #ifndef	BLE_OTA_ENABLE
 #define BLE_OTA_ENABLE		0
@@ -33,10 +30,13 @@
 
 #define START_UP_FLAG		(0x544c4e4b)
 
+#if __TLSR_RISCV_EN__
+#include "drivers/B91/ext_driver/mcu_boot.h"
+#else
+#define	BOOT_MARK_ADDR					0x00008  //Kite/vulture: 0x08
+#define	FW_SIZE_ADDR					0x00018
+#endif
 
-#define CMD_OTA_FW_VERSION					0xff00
-#define CMD_OTA_START						0xff01
-#define CMD_OTA_END							0xff02
 
 enum{
     FW_CHECK_NONE       = 0x00,  //
@@ -44,6 +44,21 @@ enum{
     FW_CHECK_AGTHM2     = 0x02,  //crc 32
     FW_CHECK_MAX,
 };
+
+
+#if __TLSR_RISCV_EN__
+#include "stack/ble/service/ota/ota_stack.h"
+#include "stack/ble/service/ota/ota.h"
+#else
+
+#ifndef	BLE_OTA_ENABLE
+#define BLE_OTA_ENABLE		0
+#endif
+
+
+#define CMD_OTA_FW_VERSION					0xff00
+#define CMD_OTA_START						0xff01
+#define CMD_OTA_END	
 
 typedef struct{
 	u8  ota_start_flag;
@@ -57,7 +72,7 @@ extern u32 blt_ota_start_tick;
 extern u32 blt_ota_timeout_us;
 
 extern u32	ota_program_offset;
-extern int 	ota_firmware_size_k;
+extern u32 	ota_firmware_size_k;
 extern u32	bls_ota_bootFlagAddr;
 extern int 	ota_program_bootAddr ;
 
@@ -68,8 +83,6 @@ typedef void (*ota_versionCb_t)(void);
 typedef void (*ota_resIndicateCb_t)(int result);
 
 extern ota_resIndicateCb_t otaResIndicateCb;
-
-
 
 
 enum{
@@ -88,10 +101,13 @@ enum{
  	OTA_OVERFLOW,		 // the ota adr overflow to 0x30000
  	OTA_ERR_STS,
 	OTA_SUCCESS_DEBUG,     //success
+ 	OTA_FW_CHECK_ERR,
+	OTA_REBOOT_NO_LED,	// no LED indication, for quickly reboot.
 };
 
 #endif /* BLE_LL_OTA_H_ */
 
+#if 0
 typedef struct{
 	u8 device_type;
 	u32 fw_version;
@@ -161,12 +177,13 @@ typedef struct{
 #define	AIS_OTA_RESULT			0x26
 #define	AIS_OTA_DATA			0x2f
 
-void bls_cb_ota_procTimeout(void);
+void bls_ota_procTimeout(void);
 
 //user interface
 void bls_ota_registerStartCmdCb(ota_startCb_t cb);
 void bls_ota_registerVersionReqCb(ota_versionCb_t cb);
 void bls_ota_registerResultIndicateCb(ota_resIndicateCb_t cb);
+#endif
 
 void bls_ota_setTimeout(u32 timeout_us);
 void blt_slave_ota_finish_handle();
@@ -186,12 +203,11 @@ void bls_ota_set_fwSize_and_fwBootAddr(int firmware_size_k, int boot_addr);
 //only valid for 8261/8266
 void bls_ota_setBootFlagAddr(u32 bootFlag_addr);
 
-void bls_ota_clearNewFwDataArea(void);
+int bls_ota_clearNewFwDataArea(int check_only);
 
 unsigned short crc16(unsigned char *pD, int len);
 u8 ota_condition_enable();
 void set_ota_reboot_flag(u8 flag);
 u8 get_fw_ota_value();
-
 
 

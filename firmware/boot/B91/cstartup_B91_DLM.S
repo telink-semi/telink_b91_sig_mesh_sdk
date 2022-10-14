@@ -1,48 +1,26 @@
 /********************************************************************************************************
- * @file	cstartup_B91_DLM.S
+ * @file     cstartup_B91_DLM.S
  *
- * @brief	for TLSR chips
+ * @brief    This is the boot file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
+
 #if 0	/*default is close*/
     .section .vectors, "ax"
 
@@ -59,14 +37,8 @@
 
     .align 2
 _RESET_ENTRY:
-	/* Decide whether this is an NMI or cold reset */
-	csrr t0, mcause
-	j 		 _NMI_HANDLER
-    .org 0x8
-_NMI_HANDLER:
-	bnez t0, nmi_handler
-    j 		 _START
-
+	j 		 _START
+	//free the 6th ~ 7th byte to store the crc type of the bin file
     .org 0x18
     .word (BIN_SIZE)
 
@@ -98,6 +70,16 @@ _START:
     .option norelax
     la     gp, __global_pointer$
     .option pop
+
+/*
+* swire usb enable default.when dp and dm use as GPIO, it has a risk to trigger the swire through usb function
+* to do something unexcept when toggle dp pin
+*/
+_SWS_USB_DIS:
+	lui		t0, 0x80100
+	addi	t0 , t0 , 0x700
+	li		t1, 0x40
+	sb		t1, 0x501(t0)  //0x80100c01 -> 0x40  <7>: 0 swire_usb_dis
 
 	/* Initialize stack pointer */
     la     t0, _STACK_TOP
@@ -264,28 +246,18 @@ _END:
     j    _END
 
 
-
-	.weak nmi_handler
-nmi_handler:
-1:	j 	 1b
-
-
  .section .retention_reset, "ax"
-
-
+    .option push
+    .option norelax
     .global _IRESET_ENTRY
  	.type _IRESET_ENTRY,@function
 
     .align 2
 _IRESET_ENTRY:
 	/* Decide whether this is an NMI or cold reset */
-	csrr t0, mcause
-	beqz t0, _ISTART
-	call nmi_handler
 	j 		_ISTART
 
-    .align 2
-
+	.org 0x22
 _ISTART:
 #if 0
 	// add debug, PB4 output 1
@@ -296,10 +268,19 @@ _ISTART:
 	sb		t2 , 0x30b(t0)		 //0x8014030b  PB output  =  0x10
 #endif
 	/* Initialize global pointer */
-    .option push
-    .option norelax
+
     la     gp, __global_pointer$
     .option pop
+
+/*
+* swire usb enable default.when dp and dm use as GPIO, it has a risk to trigger the swire through usb function
+* to do something unexcept when toggle dp pin
+*/
+_ISWS_USB_DIS:
+	lui		t0, 0x80100
+	addi	t0 , t0 , 0x700
+	li		t1, 0x40
+	sb		t1, 0x501(t0)  //0x80100c01 -> 0x40  <7>: 0 swire_usb_dis
 
 	/* Initialize stack pointer */
     la     t0, _STACK_TOP
@@ -385,9 +366,9 @@ _WAIT_EFUSE_LOAD_FINISH:
 #endif
 _MULTI_ADDRESS_BEGIN:
 	lui		t0 , 0x80140
-	la		t1 , tl_multi_addr
+	la		t1 , g_pm_multi_addr
 	lw		t2 , 0(t1)
-	sw		t2 , 0x104(t0)			 //tl_multi_addr->0x80140104
+	sw		t2 , 0x104(t0)			 //g_pm_multi_addr->0x80140104
 
 #if 0
 	/* Move ramcode from flash to sram */
@@ -455,6 +436,7 @@ _IZERO_AES_BEGIN:
     addi   t2, t2, 4
     j      _IZERO_AES_BEGIN
 
+
 	/* Fill the remaining section in sram */
 _IFILL_STK:
 #if 0
@@ -496,17 +478,15 @@ default_irq_entry:
  trap_handler:
 1:	j 1b
 
-    .macro INTERRUPT num
+	.macro INTERRUPT num
 	.weak entry_irq\num
 	.set entry_irq\num, default_irq_entry
 	.long entry_irq\num
 	.endm
 
-
-
 #define VECTOR_NUMINTRS         63
 
-   	 .section .ram_code, "ax"
+   	.section .ram_code, "ax"
 
 	.global __vectors
 	.balign 256

@@ -1,67 +1,45 @@
 /********************************************************************************************************
- * @file	keyboard.c
+ * @file     keyboard.c
  *
- * @brief	for TLSR chips
+ * @brief    This is the source file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-#include "../../tl_common.h"
-#include "../../drivers.h"
+
+#include "tl_common.h"
+#include "drivers.h"
 #include "keyboard.h"
-#include "../usbstd/usbkeycode.h"
+#include "application/usbstd/usbkeycode.h"
 
 
 #if (defined(KB_DRIVE_PINS) && defined(KB_SCAN_PINS))
 
-u32 drive_pins[] = KB_DRIVE_PINS;
-u32 scan_pins[] = KB_SCAN_PINS;
+const u32 drive_pins[] = KB_DRIVE_PINS;
+const u32 scan_pins[] = KB_SCAN_PINS;
 
 #if (STUCK_KEY_PROCESS_ENABLE)
 unsigned char stuckKeyPress[ARRAY_SIZE(drive_pins)];
 #endif
 
-kb_data_t	kb_event;
-kb_data_t	kb_event_cache;
-unsigned char  deepback_key_state;
-u32 deepback_key_tick;
+_attribute_data_retention_	kb_data_t	kb_event;
+_attribute_data_retention_	kb_data_t	kb_event_cache;
+_attribute_data_retention_	unsigned char  deepback_key_state;
+_attribute_data_retention_	u32 deepback_key_tick;
 
 #ifndef		SCAN_PIN_50K_PULLUP_ENABLE
 #define		SCAN_PIN_50K_PULLUP_ENABLE		0
@@ -84,7 +62,7 @@ u32 deepback_key_tick;
 #endif
 
 #ifndef		KB_HAS_CTRL_KEYS
-#define		KB_HAS_CTRL_KEYS		1
+#define		KB_HAS_CTRL_KEYS		0 // modify by qifa, // BLE_SRC_TELINK_MESH_EN
 #endif
 
 #ifndef		KB_RM_GHOST_KEY_EN
@@ -97,6 +75,10 @@ u32 deepback_key_tick;
 
 #ifndef		KB_DRV_DELAY_TIME
 #define		KB_DRV_DELAY_TIME		10
+#endif
+
+#ifndef		KB_STANDARD_KEYBOARD
+#define		KB_STANDARD_KEYBOARD	0
 #endif
 
 
@@ -149,6 +131,8 @@ static const unsigned char kb_map_normal[ARRAY_SIZE(scan_pins)][ARRAY_SIZE(drive
 static const unsigned char kb_map_normal[ARRAY_SIZE(scan_pins)][ARRAY_SIZE(drive_pins)] = KB_MAP_NORMAL;
 #endif
 
+
+#if (KB_STANDARD_KEYBOARD)
 #ifndef			KB_MAP_NUM
 static const unsigned char kb_map_num[ARRAY_SIZE(scan_pins)][ARRAY_SIZE(drive_pins)] = {
 	{VK_PAUSE,	 VK_POWER,	  VK_EURO,		VK_SLEEP,	 	VK_RCTRL,	  VK_WAKEUP,	VK_CTRL,	    VK_F5},
@@ -206,6 +190,7 @@ kb_k_mp_t *	kb_p_map[4] = {
 		kb_map_fn,
 		kb_map_fn,
 };
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -215,7 +200,7 @@ kb_k_mp_t *	kb_p_map[4] = {
 
 #endif
 
-u32	scan_pin_need;
+_attribute_data_retention_	u32	scan_pin_need;
 
 static unsigned char 	kb_is_fn_pressed = 0;
 
@@ -226,7 +211,6 @@ void kb_rmv_ghost_key(u32 * pressed_matrix){
 	foreach_arr(i, drive_pins){
 		for(int j = (i+1); j < ARRAY_SIZE(drive_pins); ++j){
 			u32 mix = (pressed_matrix[i] & pressed_matrix[j]);
-			// >=2 根线重合,  那就是 ghost key
 			//four or three key at "#" is pressed at the same time, should remove ghost key
 			if( mix && (!BIT_IS_POW2(mix) || (pressed_matrix[i] ^ pressed_matrix[j])) ){
 				// remove ghost keys
@@ -242,14 +226,14 @@ void kb_rmv_ghost_key(u32 * pressed_matrix){
 #if (LONG_PRESS_KEY_POWER_OPTIMIZE)
 int key_matrix_same_as_last_cnt = 0;  //record key matrix no change cnt
 #endif
+static u32 mtrx_pre[ARRAY_SIZE(drive_pins)]; // move by qifa, // BLE_SRC_TELINK_MESH_EN
+static u32 mtrx_last[ARRAY_SIZE(drive_pins)];
 
 unsigned int key_debounce_filter( u32 mtrx_cur[], u32 filt_en ){
     u32 kc = 0;
 #if (LONG_PRESS_KEY_POWER_OPTIMIZE)
     unsigned char matrix_differ = 0;
 #endif
-    static u32 mtrx_pre[ARRAY_SIZE(drive_pins)];
-    static u32 mtrx_last[ARRAY_SIZE(drive_pins)];
     foreach_arr(i, drive_pins){
         u32 mtrx_tmp = mtrx_cur[i];
 #if (STUCK_KEY_PROCESS_ENABLE)
@@ -320,7 +304,11 @@ static inline void kb_remap_key_row(int drv_ind, u32 m, int key_max, kb_data_t *
 
 static inline void kb_remap_key_code(u32 * pressed_matrix, int key_max, kb_data_t *kb_data, int numlock_status){
 
+#if (KB_STANDARD_KEYBOARD)
 	kb_k_mp = kb_p_map[(numlock_status&1) | (kb_is_fn_pressed << 1)];
+#else
+	kb_k_mp = (kb_k_mp_t *)&kb_map_normal[0];
+#endif
 	foreach_arr(i, drive_pins){
 		u32 m = pressed_matrix[i];
 		if(!m) continue;
@@ -422,8 +410,11 @@ u32 kb_scan_key_value (int numlock_status, int read_key,unsigned char * gpio)
 		kb_is_fn_pressed = 0;
 
 		u32 pressed_matrix[ARRAY_SIZE(drive_pins)] = {0};
+#if (KB_STANDARD_KEYBOARD)
 		kb_k_mp = kb_p_map[0];
-
+#else
+		kb_k_mp = (kb_k_mp_t *)&kb_map_normal[0];
+#endif
 		kb_scan_row (0, gpio);
 		for (int i=0; i<=ARRAY_SIZE(drive_pins); i++) {
 			u32 r = kb_scan_row (i < ARRAY_SIZE(drive_pins) ? i : 0, gpio);
@@ -507,6 +498,15 @@ u32 kb_scan_key_value (int numlock_status, int read_key,unsigned char * gpio)
 		return 1;
 }
 
+#if (PM_DEEPSLEEP_RETENTION_ENABLE)
+void global_var_no_ret_init_kb() // add by qifa, // BLE_SRC_TELINK_MESH_EN
+{
+    memset4(&matrix_buff,0, sizeof(matrix_buff));
+    matrix_wptr = matrix_rptr = 0;
+    memset(mtrx_pre, 0, sizeof(mtrx_pre));
+    memset(mtrx_last, 0, sizeof(mtrx_last));
+}
+#endif
 
 
 

@@ -3,45 +3,24 @@
  *
  * @brief	for TLSR chips
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
 #include "proj_lib/ble/ll/ll.h"
@@ -51,9 +30,12 @@
 #include "../common/app_proxy.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
 #include "../common/app_beacon.h"
-#include "drivers.h"
-#include "stack/ble/ble.h"
-#include "proj_lib/ble/att.h"
+#if __TLSR_RISCV_EN__
+#include "stack/ble/service/ota/ota_server.h"
+#endif
+#if DU_ENABLE
+#include "vendor/common/user_du.h"
+#endif
 #if(1)
 
 typedef struct
@@ -221,59 +203,44 @@ u8	 	my_OtaData 		= 0x00;
 // pb-gatt 
 u8 my_pb_gattUUID[2]=SIG_MESH_PROVISION_SERVICE;
 
-const u8 my_pb_gatt_out_UUID[2]= SIG_MESH_PROVSIION_DATA_OUT;
+#if !ATT_REPLACE_PROXY_SERVICE_EN
+const
+#endif
+u8 my_pb_gatt_out_UUID[2]= SIG_MESH_PROVSIION_DATA_OUT;
 //static u8 my_pb_gatt_out_prop = CHAR_PROP_NOTIFY;
 static u8 my_pb_gatt_out_prop = CHAR_PROP_NOTIFY;
 
-const u8 my_pb_gattOutName[]={'P','B','G','A','T','T','-','O','U','T'};
+#if !ATT_REPLACE_PROXY_SERVICE_EN
+const
+#endif
+u8 my_pb_gattOutName[]={'P','B','G','A','T','T','-','O','U','T'};
 u8 	my_pb_gattOutData[2] =MESH_PROVISON_DATA;
-
-const u8 my_pb_gatt_in_UUID[2]= SIG_MESH_PROVISION_DATA_IN;
+#if !ATT_REPLACE_PROXY_SERVICE_EN
+const
+#endif
+ u8 my_pb_gatt_in_UUID[2]= SIG_MESH_PROVISION_DATA_IN;
 static u8 my_pb_gatt_in_prop =  CHAR_PROP_WRITE_WITHOUT_RSP;
-const u8 my_pb_gattInName[]={'P','B','G','A','T','T','-','I','N'};
+#if !ATT_REPLACE_PROXY_SERVICE_EN
+const
+#endif
+u8 my_pb_gattInName[]={'P','B','G','A','T','T','-','I','N'};
 u8 	my_pb_gattInData[2] =MESH_PROVISON_DATA;
-extern u8  provision_In_ccc[2];
-extern u8  provision_Out_ccc[2];
 
 u8 my_proxy_gattUUID[2]= SIG_MESH_PROXY_SERVICE;
 
 const u8 my_proxy_out_UUID[2]= SIG_MESH_PROXY_DATA_OUT;
+#if !ATT_REPLACE_PROXY_SERVICE_EN
 static u8 my_proxy_out_prop = CHAR_PROP_NOTIFY;
+#endif
 const u8 my_proxy_out_Name[]={'P','R','O','X','Y','-','O','U','T'};
 u8 my_proxy_outData[2] =MESH_PROXY_DATA;
 
 const u8 my_proxy_in_UUID[2]= SIG_MESH_PROXY_DATA_IN;
+#if !ATT_REPLACE_PROXY_SERVICE_EN
 static u8 my_proxy_in_prop = CHAR_PROP_WRITE_WITHOUT_RSP;
+#endif
 const u8 my_proxy_in_Name[]={'P','R','O','X','Y','-','I','N'};
 u8 my_proxy_inData[2] =MESH_PROXY_DATA;
-
-u8 proxy_Out_ccc[2]={0x00,0x00};
-u8 proxy_In_ccc[2]=	{0x01,0x00};
-
-
-int pb_gatt_provision_out_ccc_cb(void *p)
-{
-	rf_packet_att_data_t *pw = (rf_packet_att_data_t *)p;
-	provision_Out_ccc[0] = pw->dat[0];
-	provision_Out_ccc[1] = pw->dat[1];
-	beacon_send.conn_beacon_flag =1;
-	return 1;	
-}
-int	pb_gatt_Write (void *p)
-{
-	if(provision_In_ccc[0]==0 && provision_In_ccc[1]==0){
-		return 0;
-	}
-	#if FEATURE_PROV_EN
-	rf_packet_att_data_t *pw = (rf_packet_att_data_t *)p;
-	// package the data 
-	if(!pkt_pb_gatt_data(pw,L2CAP_PROVISON_TYPE,proxy_para_buf,&proxy_para_len)){
-		return 0;
-	}
-	dispatch_pb_gatt(proxy_para_buf ,proxy_para_len);
-	#endif 
-	return 1;
-}
 
 #if USER_DEFINE_SET_CCC_ENABLE
 const  u8 my_userdefine_service_UUID[16]= TELINK_USERDEFINE_GATT;
@@ -281,114 +248,7 @@ static u8 my_userdefine_prop		= CHAR_PROP_READ | CHAR_PROP_WRITE_WITHOUT_RSP|CHA
 u8	 	  my_userdefine_dat 		= 0x00;
 const u8  my_userderdefine[4] = {'U', 'S', 'E','R'};
 const u8  my_userdefine_UUID[16]= TELINK_USERDEFINE_UUID;
-
-int set_ccc_diaptch(void *p)
-{
-	rf_packet_att_data_t *pw = (rf_packet_att_data_t *)p;
-	provision_Out_ccc[0] = pw->dat[0];
-	provision_Out_ccc[1] = pw->dat[1];
-	beacon_send.conn_beacon_flag =1;
-	return 1;
-}
 #endif
-
-int proxy_out_ccc_cb(void *p)
-{
-	rf_packet_att_data_t *pw = (rf_packet_att_data_t *)p;
-	proxy_Out_ccc[0] = pw->dat[0];
-	proxy_Out_ccc[1] = pw->dat[1];
-	beacon_send.conn_beacon_flag =1;
-	beacon_send.tick = clock_time();
-	return 1;	
-}
-
-int proxy_gatt_Write(void *p)
-{
-	if(proxy_In_ccc[0]==0 && proxy_In_ccc[1]==0){
-		return 0;
-	}
-	#if FEATURE_PROXY_EN
-	rf_packet_att_data_t *pw = (rf_packet_att_data_t *)p;
-	pb_gatt_proxy_str *p_gatt = (pb_gatt_proxy_str *)(pw->dat);
-	mesh_cmd_bear_unseg_t *p_bear = (mesh_cmd_bear_unseg_t *)proxy_para_buf;
-	
-	if(p_gatt->msgType == MSG_PROXY_CONFIG ){
-		if(!pkt_pb_gatt_data(pw,L2CAP_PROXY_TYPE,(u8 *)&p_bear->nw,&proxy_para_len)){
-			return 0;
-		}
-		p_bear->trans_par_val=TRANSMIT_DEF_PAR;
-		p_bear->len=proxy_para_len+1;
-		p_bear->type=MESH_ADV_TYPE_MESSAGE;
-		// different dispatch 
-		//send the data by the SIG MESH layer 
-		if(0 == mesh_rc_data_cfg_gatt((u8 *)p_bear)){
-		    proxy_config_dispatch((u8 *)&p_bear->nw,proxy_para_len);
-		}
-	}else if (p_gatt->msgType == MSG_MESH_BEACON){
-		if(!pkt_pb_gatt_data(pw,L2CAP_BEACON_TYPE,(u8 *)&p_bear->beacon,&proxy_para_len)){
-			return 0;
-		}
-		if(SECURE_BEACON == p_bear->beacon.type){
-			p_bear->len =23;
-			//mesh_bear_tx2mesh((u8 *)p_bear, TRANSMIT_DEF_PAR_BEACON);
-			int err = mesh_rc_data_beacon_sec(&p_bear->len, 0);		
-			if(err != 100){
-                LOG_MSG_INFO(TL_LOG_IV_UPDATE,&p_bear->len, p_bear->len+1,"RX secure GATT beacon,nk arr idx:%d, new:%d, pkt:",mesh_key.netkey_sel_dec,mesh_key.new_netkey_dec);
-			}
-		}else if (PRIVACY_BEACON == p_bear->beacon.type){
-			// no handle for other beacon now
-			#if MD_PRIVACY_BEA
-			p_bear->len =28;
-			int err = mesh_rc_data_beacon_privacy(&p_bear->len, 0);		
-			if(err != 100){
-                LOG_MSG_INFO(TL_LOG_IV_UPDATE,&p_bear->len, p_bear->len+1,"RX prrivacy GATT beacon,nk arr idx:%d, new:%d, pkt:",mesh_key.netkey_sel_dec,mesh_key.new_netkey_dec);
-			}
-			#endif
-		}else{
-			// no handle for other beacon now
-		}
-	}else if(p_gatt->msgType == MSG_NETWORK_PDU){
-		if(!pkt_pb_gatt_data(pw,L2CAP_NETWORK_TYPE,(u8 *)&p_bear->nw,&proxy_para_len)){
-			return 0;
-		}
-		// and then how to use the data ,make a demo to turn on or turn off the light 
-		p_bear->trans_par_val = TRANSMIT_DEF_PAR;
-		p_bear->len=proxy_para_len+1;
-		p_bear->type=MESH_ADV_TYPE_MESSAGE;
-		mesh_nw_pdu_from_gatt_handle((u8 *)p_bear);
-		#if DF_TEST_MODE_EN
-		extern void cfg_led_event (u32 e);
-		cfg_led_event(LED_EVENT_FLASH_2HZ_2S);
-		#endif
-	}
-#if MESH_RX_TEST
-	else if((p_gatt->msgType == MSG_RX_TEST_PDU)&&(p_gatt->data[0] == 0xA3) && (p_gatt->data[1] == 0xFF)){
-		u8 par[10];
-		memset(par,0x00,sizeof(par));
-		u16 adr_dst = p_gatt->data[2] + (p_gatt->data[3]<<8);
-		u8 rsp_max = p_gatt->data[4];	
-		par[0] = p_gatt->data[6]&0x01;//on_off	
-		u8 ack = p_gatt->data[5];
-		u32 send_tick = clock_time();
-		memcpy(par+4, &send_tick, 4);
-		par[8] = p_gatt->data[6];// cur count
-		u8 pkt_nums_send = p_gatt->data[7];
-		par[3] = p_gatt->data[8];// pkt_nums_ack	
-		u32 par_len = 9;
-		if(p_gatt->data[7] > 1){// unseg:11  seg:8
-			par_len = 12*pkt_nums_send-6;
-		}
-		extern u16 mesh_rsp_rec_addr;
-		mesh_rsp_rec_addr = p_gatt->data[9] + (p_gatt->data[10]<<8);
-		SendOpParaDebug(adr_dst, rsp_max, ack ? G_ONOFF_SET : G_ONOFF_SET_NOACK, 
-						   (u8 *)&par, par_len);
-	}
-#endif
-	else{
-	}
-#endif
-	return 0;
-}
 
 const u16  mi_gerneric_service  = SERVICE_UUID_GENERIC_ATTRIBUTE;
 const u16 mi_service_change_uuid = 0x2a05;
@@ -401,16 +261,34 @@ u8 mi_service_change_buf_perm = ATT_PERMISSIONS_READ;
 u8 mi_service_change_ccc_perm = ATT_PERMISSIONS_RDWR;
 
 #if MI_API_ENABLE 
+
+#define BLE_UUID_MI_TOKEN 		0x0001
+#define BLE_UUID_MI_PRODUCT_ID	0x0002
+#define BLE_UUID_MI_VERS     	0x0004                    /**< The UUID of the Mi Service Version Characteristic. */
+#define BLE_UUID_MI_WIFICONFIG	0x0005
+#define BLE_UUID_MI_CTRLP    	0x0010                    /**< The UUID of the Control Point Characteristic. */
+#define BLE_UUID_MI_DEVICE_ID	0x0013
+#define BLE_UUID_BEACON_KEY		0x0014
+#define BLE_UUID_DEVICE_LIST 	0x0015
+#define BLE_UUID_MI_SECURE   	0x0016                    /**< The UUID of the Secure Auth Characteristic. */
+#define BLE_UUID_MI_OTA_CTRL 	0x0017                    /**< The UUID of the OTA Control Point Characteristic. */
+#define BLE_UUID_MI_OTA_DATA 	0x0018                    /**< The UUID of the OTA Data Characteristic. */
+#define BLE_UUID_MI_STANDARD 	0x0019                    /**< The UUID of the Standard Auth Characteristic. */
+#define BLE_UUID_MI_SPEC_RD  	0x001A                    /**< The UUID of the MIOT Spec RX Characteristic. */
+#define BLE_UUID_MI_SPEC_WR  	0x001B                    /**< The UUID of the MIOT Spec TX Characteristic. */
+#define BLE_UUID_MI_SYS_INFO 	0x001C                    /**< The UUID of the System info Characteristic. */
+
+
 const u16 mi_primary_service_uuid = 0xfe95;
 u8 mi_pri_service_perm = ATT_PERMISSIONS_READ_AUTHOR;
 
-const u16 mi_version_uuid = 0x0004;
+const u16 mi_version_uuid = BLE_UUID_MI_VERS;
 static u8 mi_version_prop = CHAR_PROP_READ;
 static u8 mi_version_buf[20]="0.0.1_0000";
 const u8 mi_version_str[]="Version";
 u8 mi_version_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
-const u16 mi_ctrlp_uuid = 0x0010;
+const u16 mi_ctrlp_uuid = BLE_UUID_MI_CTRLP;
 static u8 mi_ctrlp_prop = CHAR_PROP_WRITE_WITHOUT_RSP|CHAR_PROP_NOTIFY;
 static u8 mi_ctrlp_buf[4];
 const u8 mi_ctrlp_str[]="contrl point";
@@ -419,7 +297,7 @@ u8 mi_sec_ctrlp_buf_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 u8 mi_sec_ctrlp_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
 
-const u16 mi_sec_auth_uuid = 0x0016;
+const u16 mi_sec_auth_uuid = BLE_UUID_MI_SECURE;
 static u8 mi_sec_auth_prop = CHAR_PROP_WRITE_WITHOUT_RSP|CHAR_PROP_NOTIFY;
 static u8 mi_sec_auth_buf[20];
 const u8 mi_sec_auth_str[]="Security Auth";
@@ -427,7 +305,7 @@ u8 mi_sec_auth_ccc[2]=	{0x00,0x00};
 u8 mi_sec_auth_buf_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 u8 mi_sec_auth_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
-const u16 mi_ota_ctrl_uuid = 0x0017;
+const u16 mi_ota_ctrl_uuid = BLE_UUID_MI_OTA_CTRL;
 static u8 mi_ota_ctrl_prop = CHAR_PROP_WRITE|CHAR_PROP_NOTIFY;
 static u8 mi_ota_ctrl_buf[20];
 const u8 mi_ota_ctrl_str[]="Ota ctrl";
@@ -435,13 +313,38 @@ u8 mi_ota_ctrl_ccc[2]=	{0x00,0x00};
 u8 mi_ota_ctrl_buf_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 u8 mi_ota_ctrl_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
-const u16 mi_ota_data_uuid = 0x0018;
+const u16 mi_ota_data_uuid = BLE_UUID_MI_OTA_DATA;
 static u8 mi_ota_data_prop = CHAR_PROP_WRITE_WITHOUT_RSP|CHAR_PROP_NOTIFY;
 static u8 mi_ota_data_buf[20];
 const u8 mi_ota_data_str[]="Ota data";
 u8 mi_ota_data_ccc[2]=	{0x00,0x00};
 u8 mi_ota_data_buf_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 u8 mi_ota_data_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+
+
+const u16 mi_spec_rd_uuid = BLE_UUID_MI_SPEC_RD;
+static u8 mi_spec_rd_prop = CHAR_PROP_WRITE_WITHOUT_RSP|CHAR_PROP_NOTIFY;
+static u8 mi_spec_rd_buf[10];
+const  u8 mi_spec_rd_str[]="spec_rd";
+u8 mi_spec_rd_ccc[2]={0x00,0x00};
+u8 mi_spec_rd_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+u8 mi_spec_rd_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+
+const u16 mi_spec_wr_uuid = BLE_UUID_MI_SPEC_WR;
+static u8 mi_spec_wr_prop = CHAR_PROP_WRITE_WITHOUT_RSP|CHAR_PROP_NOTIFY;
+static u8 mi_spec_wr_buf[10];
+const  u8 mi_spec_wr_str[]="spec_wr";
+u8 mi_spec_wr_ccc[2]={0x00,0x00};
+u8 mi_spec_wr_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+u8 mi_spec_wr_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+
+const u16 mi_sys_info_uuid = BLE_UUID_MI_SYS_INFO;
+static u8 mi_sys_info_prop = CHAR_PROP_WRITE|CHAR_PROP_NOTIFY|CHAR_PROP_WRITE_WITHOUT_RSP;
+static u8 mi_sys_info_buf[10];
+const  u8 mi_sys_info_str[]="sys_info";
+u8 mi_sys_info_wr_ccc[2]={0x00,0x00};
+u8 mi_sys_info_wr_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
+u8 mi_sys_info_wr_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
 
 #define BLE_UUID_STDIO_SRV    {0x6D,0x69,0x2E,0x6D,0x69,0x6F,0x74,0x2E,0x62,0x6C,0x65,0x00,0x00,0x01,0x00,0x00}
@@ -469,7 +372,30 @@ u8 mi_stdio_tx_ccc[2]=	{0x00,0x00};
 u8 mi_stdio_tx_buf_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 u8 mi_stdio_tx_ccc_perm = ATT_PERMISSIONS_RDWD_AUTHOR;
 
+int mi_empty_writeback(void * p)
+{
+    return 0;
+}
+
 #endif 
+
+#if (DU_ENABLE)
+#define BLE_UUID_DU_OTA_SRV    {0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0xb0,0xff,0x00,0x00}
+#define BLE_UUID_DU_OTA_CTR    {0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x00,0xff,0x00,0x00}
+#define BLE_UUID_DU_OTA_DATA   {0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x01,0xff,0x00,0x00}
+
+const u8  du_pri_service_uuid[16] = BLE_UUID_DU_OTA_SRV;
+const u16 du_pri_service_uuid_16 = 0xffb0;
+const u8  du_ctl_uuid[16] = BLE_UUID_DU_OTA_CTR;
+//const u16 du_ctl_uuid = 0xff00;
+const u8  du_ctl_prop = CHAR_PROP_WRITE|CHAR_PROP_NOTIFY;
+u8 du_ctl_ccc[2];
+u8 du_ctl_data[8];
+const u8  du_ota_uuid[16] = BLE_UUID_DU_OTA_DATA;
+//const u16 du_ota_uuid = 0xff01;
+const u8  du_ota_prop = CHAR_PROP_WRITE_WITHOUT_RSP;
+u8 du_ota_data[8];
+#endif
 
 #if(AIS_ENABLE)
 const u16 ais_pri_service_uuid = 0xfeb3;
@@ -514,30 +440,71 @@ int online_st_att_write(void *pw)
 }
 #endif
 
+#if DUAL_MESH_SIG_PVT_EN
+#define TELINK_MESH_SPP_DATA_PAIR 				{0x14,0x19,0x0d,0x0c,0x0b,0x0a,0x09,0x08,0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00} 		//!< TELINK_SPP data for ota
+u8 TelinkSppServiceUUID[16]				= TELINK_SPP_UUID_SERVICE;
+u8 TelinkSppDataPairUUID[16]            = TELINK_MESH_SPP_DATA_PAIR;
+static const u8 SppDataPairProp			= CHAR_PROP_READ | CHAR_PROP_WRITE;
+u8 SppDataPairData[20] = {0xe0};
+const u8  spp_pairname[] = {'P', 'a', 'i', 'r'};
+
+int pairWrite(void* pw)
+{
+	dual_mode_mesh_found = DUAL_MODE_NETWORK_PVT_MESH;
+	return 1;
+}
+
+int pairRead(void* p)
+{
+	return 1;
+}
+#endif
+
+#if __TLSR_RISCV_EN__
+#define ATT_SERVICE_AT_FIRST_EN			1
+#else
+#define ATT_SERVICE_AT_FIRST_EN			0	// keep the same as before to be compatible.
+#endif
+
 #define MAX_SERVICE_GAP                 (7)
 #define MAX_SERVICE_DEVICE_INFO         (5)
 #define MAX_SERVICE_GATT_OTA            (4)
 #define MAX_SERVICE_PROVISION           (9)
 #define MAX_SERVICE_PROXY               (9)
 #define MAX_USER_DEFINE_SET_CCC_ATT_NUM (USER_DEFINE_SET_CCC_ENABLE ? 4 : 0)
-#define MAX_MI_ATT_NUM                  (MI_API_ENABLE ? 29 : 0)
+#define MAX_MI_ATT_NUM                  (MI_API_ENABLE ? 41 : 0)
 #define MAX_SERVICE_CHANGE_ATT_NUM      (5)
+#define MAX_SERVICE_PRIVATE_MESH		(DUAL_MESH_SIG_PVT_EN ? 4 : 0)
+#if DU_ENABLE
+#define MAX_AIS_ATT_NUM 	            0
+#else
 #define MAX_AIS_ATT_NUM 	            (AIS_ENABLE ? 12 : 0)
+#endif
 #define MAX_ONLINE_ST_ATT_NUM 	        (ONLINE_STATUS_EN ? 4 : 0)
-
+#define MAX_DU_ATT_NUM					(DU_ENABLE?6:0)
 //---
 #define ATT_NUM_START_GAP                   (1)     // line of ATT, start from 0.
+#if ATT_SERVICE_AT_FIRST_EN
+#define ATT_NUM_START_SERVICE_CHANGE        (ATT_NUM_START_GAP + MAX_SERVICE_GAP)
+#define ATT_NUM_START_DEVICE_INFO           (ATT_NUM_START_SERVICE_CHANGE + MAX_SERVICE_CHANGE_ATT_NUM)
+#else
 #define ATT_NUM_START_DEVICE_INFO           (ATT_NUM_START_GAP + MAX_SERVICE_GAP)
+#endif
 #define ATT_NUM_START_GATT_OTA              (ATT_NUM_START_DEVICE_INFO + MAX_SERVICE_DEVICE_INFO)
 #define ATT_NUM_START_PROVISION             (ATT_NUM_START_GATT_OTA + MAX_SERVICE_GATT_OTA)
-#define ATT_NUM_START_PROXY                 (ATT_NUM_START_PROVISION + MAX_SERVICE_PROVISION)
+#define ATT_NUM_START_PROXY                 (ATT_REPLACE_PROXY_SERVICE_EN?ATT_NUM_START_PROVISION:(ATT_NUM_START_PROVISION + MAX_SERVICE_PROVISION))
 #define ATT_NUM_START_USER_DEFINE_SET_CCC   (ATT_NUM_START_PROXY + MAX_SERVICE_PROXY)
 #define ATT_NUM_START_MI_API                (ATT_NUM_START_USER_DEFINE_SET_CCC + MAX_USER_DEFINE_SET_CCC_ATT_NUM)
+#if ATT_SERVICE_AT_FIRST_EN
+#define ATT_NUM_START_AIS                   (ATT_NUM_START_MI_API + MAX_MI_ATT_NUM)
+#else
 #define ATT_NUM_START_SERVICE_CHANGE        (ATT_NUM_START_MI_API + MAX_MI_ATT_NUM)
 #define ATT_NUM_START_AIS                   (ATT_NUM_START_SERVICE_CHANGE + MAX_SERVICE_CHANGE_ATT_NUM)
+#endif
 #define ATT_NUM_START_ONLINE_ST             (ATT_NUM_START_AIS + MAX_AIS_ATT_NUM)
-
-#define ATTRIBUTE_TOTAL_NUM                 (ATT_NUM_START_ONLINE_ST + MAX_ONLINE_ST_ATT_NUM - 1)
+#define ATT_NUM_START_DU					(ATT_NUM_START_ONLINE_ST+MAX_ONLINE_ST_ATT_NUM)
+#define ATT_NUM_START_PRIVATE_MESH			(ATT_NUM_START_DU+MAX_DU_ATT_NUM)
+#define ATTRIBUTE_TOTAL_NUM                 (ATT_NUM_START_PRIVATE_MESH + MAX_SERVICE_PRIVATE_MESH - 1)
 
 /*const */u8 PROVISION_ATT_HANDLE = (ATT_NUM_START_PROVISION + 2);  // slave
 /*const */u8 GATT_PROXY_HANDLE = (ATT_NUM_START_PROXY + 2);  // slave
@@ -554,14 +521,18 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
     {0,&att_perm_auth_read,2,1,(u8*)(&my_characterUUID),        (u8*)(&my_appearanceCharacter), 0},\
     {0,&att_perm_auth_read,2,sizeof (my_appearance), (u8*)(&my_appearanceUIID),     (u8*)(&my_appearance), 0},\
     {0,&att_perm_auth_read,2,1,(u8*)(&my_characterUUID),        (u8*)(&my_periConnParamChar), 0},\
-    {0,&att_perm_auth_read,2,sizeof (my_periConnParameters),(u8*)(&my_periConnParamUUID),   (u8*)(&my_periConnParameters), 0},\
+    {0,&att_perm_auth_read,2,sizeof (my_periConnParameters),(u8*)(&my_periConnParamUUID),   (u8*)(&my_periConnParameters), 0},
+
+#define MY_ATTRIBUTE_DEVICE_INFO           \
     /* 0008 - 000c  device Information Service*/   \
     {MAX_SERVICE_DEVICE_INFO,&att_perm_auth_read,2,2,(u8*)(&my_primaryServiceUUID),   (u8*)(&my_devServiceUUID), 0},\
     {0,&att_perm_auth_read,2,1,(u8*)(&my_characterUUID),        (u8*)(&my_PnPCharacter), 0},\
     {0,&att_perm_auth_read,2,sizeof (my_PnPtrs),(u8*)(&my_PnPUUID), (u8*)(my_PnPtrs), 0},\
 	\
     {0,&att_perm_auth_read,2,1,(u8*)(&my_characterUUID),        (u8*)(&my_fwRevisionCharacter), 0},\
-    {0,&att_perm_auth_read,2,FW_REVISION_VALUE_LEN,(u8*)(&my_fwRevisionUUID), (u8*)(my_fwRevision_value), 0},\
+    {0,&att_perm_auth_read,2,FW_REVISION_VALUE_LEN,(u8*)(&my_fwRevisionUUID), (u8*)(my_fwRevision_value), 0},
+
+#define MY_ATTRIBUTE_TLK_GATT_OTA           \
     /* 000d - 0010  OTA*/   \
     {MAX_SERVICE_GATT_OTA,&att_perm_auth_read, 2,16,(u8*)(&my_primaryServiceUUID),     (u8*)(&my_OtaServiceUUID), 0},\
     {0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),      (u8*)(&my_OtaProp), 0}, /*prop*/   \
@@ -594,7 +565,7 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
 #define MY_ATTRIBUTE_USER_DEFINE_SET_CCC           \
 	{MAX_USER_DEFINE_SET_CCC_ATT_NUM,&att_perm_auth_read, 2,16,(u8*)(&my_primaryServiceUUID), 	(u8*)(&my_userdefine_service_UUID), 0},\
 	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&my_userdefine_prop), 0}, /*prop*/   \
-	{0,&att_perm_auth_rdwd,16,sizeof(my_userdefine_dat),(u8*)(&my_userdefine_UUID), (&my_userdefine_dat), &set_ccc_diaptch, 0}, /*value*/   \
+	{0,&att_perm_auth_rdwd,16,sizeof(my_userdefine_dat),(u8*)(&my_userdefine_UUID), (&my_userdefine_dat), &pb_gatt_provision_out_ccc_cb, 0}, /*value*/   \
 	{0,&att_perm_auth_read, 2,sizeof (my_userderdefine),(u8*)(&userdesc_UUID), (u8*)(my_userderdefine), 0},
 #endif
 
@@ -611,7 +582,7 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
 	{0,&mi_sec_ctrlp_ccc_perm, 2, sizeof(mi_sec_ctrlp_ccc),(u8*)(&clientCharacterCfgUUID), 	(u8*)(mi_sec_ctrlp_ccc), 0}, /*value*/   \
     \
 	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&mi_sec_auth_prop), 0}, /*prop*/   \
-	{0,&mi_sec_auth_buf_perm, 2,sizeof(mi_sec_auth_buf),(u8*)(&mi_sec_auth_uuid),	(mi_sec_auth_buf), 0, 0}, /*value*/   \
+	{0,&mi_sec_auth_buf_perm, 2,sizeof(mi_sec_auth_buf),(u8*)(&mi_sec_auth_uuid),	(mi_sec_auth_buf), &mi_empty_writeback, 0}, /*value*/   \
 	{0,&att_perm_auth_read, 2,sizeof (mi_sec_auth_str),(u8*)(&userdesc_UUID), (u8*)(mi_sec_auth_str), 0},	\
 	{0,&mi_sec_auth_ccc_perm, 2, sizeof(mi_sec_auth_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_sec_auth_ccc), 0}, /*value*/   \
     \
@@ -621,10 +592,24 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
 	{0,&mi_ota_ctrl_ccc_perm, 2, sizeof(mi_ota_ctrl_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_ota_ctrl_ccc), 0}, /*value*/   \
     \
 	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&mi_ota_data_prop), 0}, /*prop*/   \
-	{0,&mi_ota_data_buf_perm, 2,sizeof(mi_ota_data_buf),(u8*)(&mi_ota_data_uuid),	(mi_ota_data_buf), 0, 0}, /*value*/   \
+	{0,&mi_ota_data_buf_perm, 2,sizeof(mi_ota_data_buf),(u8*)(&mi_ota_data_uuid),	(mi_ota_data_buf), &mi_empty_writeback, 0}, /*value*/   \
 	{0,&att_perm_auth_read, 2,sizeof (mi_ota_data_str),(u8*)(&userdesc_UUID), (u8*)(mi_ota_data_str), 0},	\
 	{0,&mi_ota_data_ccc_perm, 2, sizeof(mi_ota_data_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_ota_data_ccc), 0}, /*value*/ \
 	\
+	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID), 	(u8*)(&mi_spec_rd_prop), 0},\
+	{0,&mi_spec_rd_perm, 2,sizeof(mi_spec_rd_buf),(u8*)(&mi_spec_rd_uuid),	(mi_spec_rd_buf), &mi_empty_writeback, 0},\
+	{0,&att_perm_auth_read, 2,sizeof (mi_spec_rd_str),(u8*)(&userdesc_UUID), (u8*)(mi_spec_rd_str), 0},\
+	{0,&mi_spec_rd_ccc_perm, 2, sizeof(mi_spec_rd_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_spec_rd_ccc), 0},\
+	\
+	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID), 	(u8*)(&mi_spec_wr_prop), 0},\
+	{0,&mi_spec_wr_perm, 2,sizeof(mi_spec_wr_buf),(u8*)(&mi_spec_wr_uuid),	(mi_spec_wr_buf), &mi_empty_writeback, 0},\
+	{0,&att_perm_auth_read, 2,sizeof (mi_spec_wr_str),(u8*)(&userdesc_UUID), (u8*)(mi_spec_wr_str), 0},\
+	{0,&mi_spec_wr_ccc_perm, 2, sizeof(mi_spec_wr_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_spec_wr_ccc), 0},\
+	\
+	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID), 	(u8*)(&mi_sys_info_prop), 0},\
+	{0,&mi_sys_info_wr_perm, 2,sizeof(mi_sys_info_buf),(u8*)(&mi_sys_info_uuid),	(mi_sys_info_buf), &mi_empty_writeback, 0}, \
+	{0,&att_perm_auth_read, 2,sizeof (mi_sys_info_str),(u8*)(&userdesc_UUID), (u8*)(mi_sys_info_str), 0},\
+	{0,&mi_sys_info_wr_ccc_perm, 2, sizeof(mi_sys_info_wr_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_sys_info_wr_ccc), 0},\
 	{MAX_MI_STDIO_NUM,&att_perm_auth_read, 2,16,(u8*)(&my_primaryServiceUUID),	(u8*)(&mi_primary_stdio_uuid), 0},\
 		{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&mi_stdio_rx_prop), 0},				\
 		{0,&mi_stdio_rx_buf_perm, 16,sizeof(mi_stdio_rx_buf),(u8*)(&mi_stdio_rx_uuid),	(mi_stdio_rx_buf), 0, 0},\
@@ -644,6 +629,14 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
 	{0,&mi_service_change_buf_perm, 2,sizeof(mi_service_change_buf),(u8*)(&mi_service_change_uuid), (mi_service_change_buf), 0, 0}, /*value*/   \
 	{0,&att_perm_auth_read, 2,sizeof (mi_service_change_str),(u8*)(&userdesc_UUID), (u8*)(mi_service_change_str), 0},	\
 	{0,&mi_service_change_ccc_perm, 2, sizeof(mi_service_change_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(mi_service_change_ccc), 0}, /*value*/   
+
+#if DUAL_MESH_SIG_PVT_EN
+#define MY_ATTRIBUTE_PRIVATE_MESH							\
+	{4,&att_perm_auth_read,2,16,(u8*)(&my_primaryServiceUUID), 	(u8*)(TelinkSppServiceUUID), 0},\
+	{0,&att_perm_auth_read,2,1,(u8*)(&my_characterUUID), 		(u8*)(&SppDataPairProp), 0},\
+	{0,&att_perm_auth_rdwd,16,16,(u8*)(TelinkSppDataPairUUID),	(SppDataPairData), &pairWrite, &pairRead},\
+	{0,&att_perm_auth_rdwd,2,sizeof (spp_pairname),(u8*)(&userdesc_UUID), (u8*)(spp_pairname), 0},
+#endif
 
 #if (AIS_ENABLE)
 #define MY_ATTRIBUTE_AIS                        \
@@ -669,17 +662,32 @@ const u8 ONLINE_ST_ATT_HANDLE_SLAVE = (ATT_NUM_START_ONLINE_ST + 2);
 	{0,&att_perm_auth_read, 2,sizeof (online_st_service_desc),(u8*)(&userdesc_UUID), (u8*)(online_st_service_desc), 0},
 #endif      
 
+#if (DU_ENABLE)
+#define MY_ATTRIBUTE_DU	\
+	{MAX_DU_ATT_NUM,&att_perm_auth_read, 2,16,(u8*)(&my_primaryServiceUUID),	(u8*)(du_pri_service_uuid), 0},\
+	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&du_ctl_prop), 0}, /*prop*/   \
+	{0,&att_perm_auth_rdwd, 16,sizeof(du_ctl_data),(u8*)(du_ctl_uuid),	(du_ctl_data), &du_ctl_Write, 0}, /*value*/   \
+	{0,&att_perm_auth_rdwd, 2, sizeof(du_ctl_ccc),(u8*)(&clientCharacterCfgUUID),	(u8*)(du_ctl_ccc), 0}, /*value*/\
+	{0,&att_perm_auth_read, 2, 1,(u8*)(&my_characterUUID),		(u8*)(&du_ota_prop), 0}, /*prop*/   \
+	{0,&att_perm_auth_rdwd, 16,sizeof(du_ota_data),(u8*)(du_ota_uuid),	(du_ota_data), &du_fw_proc, 0} /*value*/
+#endif
+
 const attribute_t my_Attributes[] = {
 	MY_ATTRIBUTE_BASE0
+#if ATT_SERVICE_AT_FIRST_EN
+	MY_ATTRIBUTE_SERVICE_CHANGE		// SERVICE_CHANGE should be after GAP, refer to base SDK.
+#endif
+	MY_ATTRIBUTE_DEVICE_INFO
+	MY_ATTRIBUTE_TLK_GATT_OTA
 	
     /* 0011 - 0019      PB-GATT*/
     {9,&att_perm_auth_read, 2,2,(u8*)(&my_primaryServiceUUID),  (u8*)(&my_pb_gattUUID), 0},
     MY_ATTRIBUTE_PB_GATT_CHAR
-    
+#if !ATT_REPLACE_PROXY_SERVICE_EN   
     /* 001a - 0022  PROXY_GATT PART*/
     {9,&att_perm_auth_read, 2,2,(u8*)(&my_primaryServiceUUID),  (u8*)(&my_proxy_gattUUID), 0},
     MY_ATTRIBUTE_PROXY_GATT_CHAR
-
+#endif
 #if USER_DEFINE_SET_CCC_ENABLE
 	// 0023 - 0026	userdefine 
 	MY_ATTRIBUTE_USER_DEFINE_SET_CCC
@@ -689,25 +697,37 @@ const attribute_t my_Attributes[] = {
     MY_ATTRIBUTE_MI_API
 #endif
 
+#if !ATT_SERVICE_AT_FIRST_EN
     MY_ATTRIBUTE_SERVICE_CHANGE
+#endif
     
 #if (AIS_ENABLE)
 	// 002c - 0037
+	#if DU_ENABLE
+	#else
 	MY_ATTRIBUTE_AIS
+	#endif
 #endif
 
 #if (ONLINE_STATUS_EN)
     MY_ATTRIBUTE_ONLINE_STATUS
 #endif      
+
+#if (DU_ENABLE)
+	MY_ATTRIBUTE_DU
+#endif
+
+#if DUAL_MESH_SIG_PVT_EN
+	MY_ATTRIBUTE_PRIVATE_MESH
+#endif
 };
 
-ble_sts_t bls_att_setDeviceName(u8* pName,u8 len)
+#if DU_ENABLE
+int bls_du_notify_rsp(u8*p_buf,int len)
 {
-	tmemset(ble_devName, 0, MAX_DEV_NAME_LEN );
-	tmemcpy(ble_devName, pName, len < MAX_DEV_NAME_LEN ? len : MAX_DEV_NAME_LEN);
-
-	return BLE_SUCCESS;
+	return  bls_att_pushNotifyData(ATT_NUM_START_DU+2,p_buf,len);
 }
+#endif
 
 void my_att_init(u8 mode)
 {
@@ -715,6 +735,33 @@ void my_att_init(u8 mode)
 	bls_att_setDeviceName(device_name, sizeof(DEV_NAME));
 	bls_att_setAttributeTable ((u8 *)my_Attributes);
 #if ATT_TAB_SWITCH_ENABLE
+#if ATT_REPLACE_PROXY_SERVICE_EN	
+	if(mode == GATT_PROVISION_MODE){
+		u8 proxy_uuid[2] = SIG_MESH_PROVISION_SERVICE;
+		u8 proxy_in[2] = SIG_MESH_PROVISION_DATA_IN;
+		u8 proxy_out[2] = SIG_MESH_PROVSIION_DATA_OUT;
+		memcpy(my_pb_gattUUID, proxy_uuid, sizeof(my_pb_gattUUID));
+		memcpy(my_pb_gatt_out_UUID, proxy_out, sizeof(my_pb_gatt_out_UUID));
+		u8 out_name[] = {'P','B','G','A','T','T','-','O','U','T',0};
+		memcpy(my_pb_gattOutName, out_name, sizeof(my_pb_gattOutName));
+
+		memcpy(my_pb_gatt_in_UUID, proxy_in, sizeof(my_pb_gatt_in_UUID));
+		u8 in_name[]={'P','B','G','A','T','T','-','I','N',0};
+		memcpy(my_pb_gattInName, in_name, sizeof(in_name));
+	}else if(mode == GATT_PROXY_MODE){
+		u8 proxy_uuid[2] = SIG_MESH_PROXY_SERVICE;
+		u8 proxy_in[2] = SIG_MESH_PROXY_DATA_IN;
+		u8 proxy_out[2] = SIG_MESH_PROXY_DATA_OUT;
+		memcpy(my_pb_gattUUID, proxy_uuid, sizeof(my_pb_gattUUID));
+		memcpy(my_pb_gatt_out_UUID, proxy_out, sizeof(my_proxy_gattUUID));
+		u8 out_name[sizeof(my_pb_gattOutName)] = {'P','R','O','X','Y','-','O','U','T',0};;
+		memcpy(my_pb_gattOutName, out_name, sizeof(my_pb_gattOutName));
+
+		memcpy(my_pb_gatt_in_UUID, proxy_in, sizeof(my_pb_gatt_in_UUID));
+		u8 in_name[sizeof(my_pb_gattInName)]={'P','R','O','X','Y','-','I','N',0};
+		memcpy(my_pb_gattInName, in_name, sizeof(in_name));
+	}
+#else
     u8 unused_gattUUID[2] = SIG_MESH_ATT_UNUSED;
 	if(mode == GATT_PROVISION_MODE){
         u8 pb_gattUUID[2]=SIG_MESH_PROVISION_SERVICE;
@@ -725,6 +772,7 @@ void my_att_init(u8 mode)
 		memcpy(my_pb_gattUUID, unused_gattUUID, sizeof(my_pb_gattUUID));
 		memcpy(my_proxy_gattUUID, proxy_gattUUID, sizeof(my_proxy_gattUUID));
 	}
+#endif
 #endif 
 }
 

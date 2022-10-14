@@ -1,27 +1,30 @@
 /********************************************************************************************************
- * @file     lighting_model_HSL.c 
+ * @file	lighting_model_HSL.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
 #ifndef WIN32
-#include "drivers/9518/watchdog.h"
+#include "proj/mcu/watchdog_i.h"
 #endif 
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/ble/blt_config.h"
@@ -44,23 +47,26 @@ s16 get_Hue_delta_value(u16 hue_target, u16 hue_present) // hue is a circular pa
 	u16 Tmp_Current_hue = hue_present;
 	u32 Tmp_caulate_val = 0;
 	if(hue_target > Tmp_Current_hue){
-		Tmp_caulate_val = Tmp_Current_hue + 0x8000;
+		Tmp_caulate_val = Tmp_Current_hue + HSL_HUE_CNT_TOTAL_HALF;
 		if(hue_target > Tmp_caulate_val){
-			result = (hue_target - 65535) + (0 - Tmp_Current_hue);
+			result = (hue_target - HSL_HUE_CNT_TOTAL) + (0 - Tmp_Current_hue);  // must be zero not HSL_HUE_MIN
 		}else{
 			result = hue_target - Tmp_Current_hue ;
 		}
 	}else{
-		Tmp_caulate_val = hue_target + 0x8000;
+		Tmp_caulate_val = hue_target + HSL_HUE_CNT_TOTAL_HALF;
 		if(Tmp_Current_hue > Tmp_caulate_val){
-			result = (65535 - Tmp_Current_hue) + (hue_target);
+			result = (HSL_HUE_CNT_TOTAL - Tmp_Current_hue) + (hue_target - 0);  // must be zero not HSL_HUE_MIN
 		}else{
 			result =  hue_target - Tmp_Current_hue;
 		}
 	}
 
-	//LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"Current_hsl_hue 0x%4x\r\n", Tmp_Current_hue);
-	//LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"Set_hsl_hue 0x%4x\r\n", hue_target);
+    #if 0
+	LOG_MSG_LIB(TL_LOG_NODE_BASIC,0,0,"Current_hsl_hue 0x%04x", Tmp_Current_hue);
+	LOG_MSG_LIB(TL_LOG_NODE_BASIC,0,0,"Set_hsl_hue 0x%04x", hue_target);
+	LOG_MSG_LIB(TL_LOG_NODE_BASIC,0,0,"Delta_hsl_hue %d\r\n", result);
+	#endif
 
 	return result;
 }
@@ -447,7 +453,7 @@ int mesh_cmd_sig_light_sat_status(u8 *par, int par_len, mesh_cb_fun_par_t *cb_pa
 	return err;
 }
 #endif
-
+#endif
 
 //--lighting model command interface-------------------
 //-----------access command--------
@@ -539,7 +545,4 @@ int access_cmd_set_light_hsl_sat_100(u16 adr, u8 rsp_max, u8 sat_100, int ack, t
 }
 
 //--lighting model command interface end----------------
-
-
-#endif
 

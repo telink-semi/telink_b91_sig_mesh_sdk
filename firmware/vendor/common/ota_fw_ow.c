@@ -1,33 +1,36 @@
 /********************************************************************************************************
- * @file     ota_copy.c 
+ * @file	ota_fw_ow.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
-#include "drivers/9518/watchdog.h"
-#include "drivers/9518/flash.h"
+#include "proj/mcu/watchdog_i.h"
+#include "drivers.h"
 #include "vendor/common/user_config.h"
-#include "drivers/9518/rf.h"
-#include "drivers/9518/pm.h"
+//#include "proj_lib/rf_drv.h"
+#include "proj_lib/pm.h"
 #include "proj_lib/ble/blt_config.h"
 
-#if (FLASH_2M_ENABLE && PINGPONG_OTA_DISABLE && (0 == FW_START_BY_BOOTLOADER_EN))
+#if (FLASH_PLUS_ENABLE && PINGPONG_OTA_DISABLE && (0 == FW_START_BY_BOOTLOADER_EN))
 static inline void ota_reboot(void){
 #if 0
     static volatile u32 reboot_0key;
@@ -44,13 +47,12 @@ _attribute_ram_code_ void ota_fw_check_over_write (void)    //must run in ramcod
 {
 	#if SWITCH_FW_ENABLE
 	u8 flash_boot_flag ;
-	u32 flash_adr_new_fw;
 	flash_read_page(FLASH_ADR_BOOT_FLAG,1,&flash_boot_flag);
-	flash_adr_new_fw = (flash_boot_flag == 0xa5)?FLASH_ADR_LIGHT_TELINK_MESH:FLASH_ADR_UPDATE_NEW_FW;
+	u32 flash_adr_new_fw = (*(u8 *)FLASH_ADR_BOOT_FLAG == 0xa5)?FLASH_ADR_LIGHT_TELINK_MESH:FLASH_ADR_UPDATE_NEW_FW;
 	#else
 	u32 flash_adr_new_fw = FLASH_ADR_UPDATE_NEW_FW;
 	#endif
-    u32 adr_flag = flash_adr_new_fw + 8;
+    u32 adr_flag = flash_adr_new_fw + BOOT_MARK_ADDR;
 	u32 adr_flag_data;
 	flash_read_page(adr_flag,sizeof(adr_flag_data),(u8*)&adr_flag_data);
     if(0x544c4e4b != adr_flag_data){

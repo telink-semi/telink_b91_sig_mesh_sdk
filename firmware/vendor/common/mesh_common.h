@@ -1,39 +1,65 @@
 /********************************************************************************************************
- * @file     mesh_common.h 
+ * @file	mesh_common.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #pragma once
 
 #include "tl_common.h"
-#include "vendor/user_app/user_app.h"
-
-
-//#include "vendor/mesh_lpn/app.h"
-//#include "vendor/mesh_provision/app.h"
-//#include "vendor/mesh_switch/app.h"
 #include "mesh_lpn.h"
 #include "mesh_fn.h"
 #include "time_model.h"
 #include "scheduler.h"
 #include "mesh_property.h"
+#include "vendor/common/battery_check.h"
+#if (!WIN32 && EXTENDED_ADV_ENABLE)
+#if __TLSR_RISCV_EN__
+#include "stack/ble/controller/ll/ll_ext_adv.h"
+#else
+#include "stack/ble/ll/ll_ext_adv.h"
+#endif
+#endif
+#if __TLSR_RISCV_EN__
+#include "chip_adapt_layer/app_audio.h"
+#endif
+
+#include "proj_lib/ble/service/ble_ll_ota.h"
+
+#if (__PROJECT_MESH__ || WIN32)
+#include "../mesh/app.h"
+#elif (__PROJECT_MESH_LPN__)
+#include "../mesh_lpn/app.h"
+#elif (__PROJECT_MESH_SWITCH__)
+#include "../mesh_switch/app.h"
+#elif (__PROJECT_MESH_PRO__ || __PROJECT_MESH_GW_NODE__)
+#include "../mesh_provision/app.h"
+#elif (__PROJECT_SPIRIT_LPN__)
+#include "../spirit_lpn/app.h"
+#elif (__PROJECT_BOOTLOADER__)
+#include "../boot_loader/app.h"
+#else
+//#error please include app.h
+#endif
+
 #include "vendor/user_app/user_app.h"
 
 /** @addtogroup Mesh_Common
@@ -44,6 +70,10 @@
   * @brief Mesh Common Code.
   * @{
   */
+
+#define RELAY_ROUTE_FILTE_TEST_EN		0
+
+
 enum{
 	RIGHT_PACKET_RET,
 	PACKET_WAIT_COMPLETE,
@@ -51,6 +81,15 @@ enum{
 	ERR_PACKET_LEN,
 	ERR_TYPE_SAR,
 };
+
+typedef struct{
+	u16 val;
+}u16_struct;    // for u8 buffer which not sure u16 align.
+
+typedef struct{
+	u32 val;
+}u32_struct;    // for u8 buffer which not sure u32 align.
+
 
 #if 1   // test firmware size
 #define NOP_TEST_BYTE_50       \
@@ -68,11 +107,23 @@ enum{
     NOP_TEST_BYTE_5K;NOP_TEST_BYTE_5K
 #endif
 
+void i2c_sim_init(void);
+void i2c_sim_write(u8 id, u8 addr, u8 dat);
+u8 i2c_sim_read(u8 id, u8 addr);
+void i2c_sim_burst_read(u8 id, u8 addr, u8 *p, int n);
+void i2c_sim_burst_write(u8 id, u8 addr,u8 *p,int n);
+
+
 #if SPIRIT_PRIVATE_LPN_EN
 #define MESH_RSP_BASE_DELAY_STEP			120  //unit:ADV_INTERVAL_MIN(10ms)
 #else
 #define MESH_RSP_BASE_DELAY_STEP			18  //unit:ADV_INTERVAL_MIN(10ms)
 #endif
+#define MESH_RSP_RANDOM_DELAY_320ms			32 //unit:ADV_INTERVAL_MIN(10ms)			
+#define MESH_RSP_RANDOM_DELAY_500ms			50 //unit:ADV_INTERVAL_MIN(10ms)			
+#define MESH_RSP_RANDOM_DELAY_1S			100 //unit:ADV_INTERVAL_MIN(10ms)			
+#define MESH_RSP_RANDOM_DELAY_2S			200 //unit:ADV_INTERVAL_MIN(10ms)
+#define MESH_RSP_RANDOM_DELAY_3S			300 //unit:ADV_INTERVAL_MIN(10ms)
 
 #define MESH_POWERUP_BASE_TIME				200
 
@@ -96,7 +147,7 @@ typedef struct ais_pri_data{
 	union{
 		u8 fmsk;
 		struct{
-			u8 ble_version:2;//00£ºBLE4.0 01£ºBLE4.2 10£ºBLE5.0 11£ºBLE5.0 above
+			u8 ble_version:2;//00: BLE4.0 01: BLE4.2 10: BLE5.0 11: BLE5.0 above
 			u8 ota_support:1;
 			u8 authen_en:1;
 			u8 secret_type:1;// 0:one device type on key, 1:one device one key
@@ -113,8 +164,8 @@ extern u8 g_reliable_retry_cnt_def;
 extern u16 g_reliable_retry_interval_min;
 extern u16 g_reliable_retry_interval_max;
 extern u8 pair_login_ok;
-extern u8 mesh_need_random_delay;
-extern const u8 UART_TX_LEN_MAX;
+extern u16 mesh_tx_with_random_delay_ms;
+extern const u16 UART_TX_LEN_MAX;
 extern u16 gateway_seg_buf_len;
 extern u8 gateway_seg_buf[];
 
@@ -129,20 +180,21 @@ static inline int mesh_get_proxy_hci_type()
 }
 //---------
 void mesh_ble_connect_cb(u8 e, u8 *p, int n);
-void mesh_ble_disconnect_cb();
+void mesh_ble_disconnect_cb(u8 reason);
 void mesh_conn_param_update_req();
 void vendor_id_check_and_update();
 void mesh_global_var_init();
 void mesh_tid_save(int ele_idx);
 void mesh_vd_init();
 void lpn_node_io_init();
+void lpn_proc_keyboard (u8 e, u8 *p, int n);
 void entry_ota_mode(void);
 void set_mesh_ota_type();
 void set_firmware_type_init();
 void set_firmware_type_SIG_mesh();
 void set_firmware_type_zb_with_factory_reset();
 void set_ota_firmwaresize(int adr);
-void ota_set_flag();
+int ota_set_flag();
 void mesh_ota_reboot_set(u8 type);
 void mesh_ota_reboot_check_refresh();
 void mesh_ota_reboot_proc();
@@ -153,6 +205,14 @@ int	app_device_mac_match (u8 *mac, u8 *mask);
 int app_l2cap_packet_receive (u16 handle, u8 * raw_pkt);
 int chn_conn_update_dispatch(u8 *p);
 void sim_tx_cmd_node2node();
+/**************************mesh_send_adv2scan_mode**************************
+function : send adv immediately
+para:
+	tx_adv: true:send adv and switch to scan mode(if enable). 0: switch to scan mode((if enable)) without send adv 
+ret: 1  means OK 
+	 0 means err 
+****************************************************************************/
+int mesh_send_adv2scan_mode(int tx_adv);
 int app_advertise_prepare_handler (rf_packet_adv_t * p);
 void my_att_init(u8 mode);
 void ble_mac_init();
@@ -172,9 +232,24 @@ int mesh_tx_cmd2self_primary(u32 light_idx, u8 *ac, int len_ac);
 u32 get_mesh_pub_interval_ms(u32 model_id, bool4 sig_model, mesh_pub_period_t *period);
 void publish_when_powerup();
 int is_need_response_to_self(u16 adr_dst, u16 op);
+int app_func_before_suspend();
+void beacon_str_disable();
+
+#if GATEWAY_ENABLE
+typedef u8 (*access_layer_dst_addr)(mesh_cmd_nw_t *p_nw);
+void register_access_layer_dst_addr_callback(void* p);
+/**
+ * @brief  the callback function for register_access_layer_dst_addr_callback
+ *   gateway can set the dst addr valid by return true even not subscribe the addr
+ * @param  p_nw: point to network message
+ * @return: 0:invaild,  1:valid
+ */
+u8 mesh_access_layer_dst_addr_valid(mesh_cmd_nw_t *p_nw);
+#endif
 
 extern u8 gatt_adv_send_flag;
 extern u16 g_vendor_id;
+extern u16 g_msg_vd_id;
 extern u32 g_vendor_md_light_vc_s;
 extern u32 g_vendor_md_light_vc_s2;
 extern u32 g_vendor_md_light_vc_c;
@@ -186,6 +261,7 @@ void set_provision_adv_data(u8 *p_uuid,u8 *oob_info);
 void bls_set_adv_delay(u8 delay);	// unit : 625us
 void bls_set_adv_retry_cnt(u8 cnt); // default :0
 void set_random_adv_delay_normal_adv(u32 random_ms);
+void rp_active_scan_req_proc();
 
 void set_sec_req_send_flag(u8 flag);// set the sec req send or not 
 ble_sts_t  blc_att_setServerDataPendingTime_upon_ClientCmd(u8 num_10ms);
@@ -287,7 +363,6 @@ void wd_clear_lib();
 void bls_ota_set_fwSize_and_fwBootAddr(int firmware_size_k, int boot_addr);
 void mesh_cfg_cmd_force_seg_set(material_tx_cmd_t *p,mesh_match_type_t *p_match_type);
 void mesh_secure_beacon_loop_proc();
-u16 mi_share_model_sub(u16 op,u16 ele_adr,u16 sub_adr,u8 *uuid,u32 model_id);
 int mesh_cmd_sig_cfg_model_sub_cb(u8 st,mesh_cfg_model_sub_set_t * p_sub_set,bool4 sig_model,u16 adr_src);
 void start_reboot(void);
 void blc_l2cap_register_pre_handler(void *p);
@@ -298,11 +373,107 @@ void vendor_md_cb_pub_st_set2ali();
 int pre_set_beacon_to_adv(rf_packet_adv_t *p);
 u16 swap_u16_data(u16 swap);
 void mesh_seg_must_en(u8 en);
-int mesh_dev_key_candi_decrypt_cb( u16 src_adr,int dirty_flag ,u8* ac_backup ,unsigned char *r_an, 
+int mesh_dev_key_candi_decrypt_cb( u16 src_adr,int dirty_flag ,const u8* ac_backup ,unsigned char *r_an, 
 											       unsigned char* ac, int len_ut, int mic_length);
-u8 mesh_pub_retransmit_para_en();
 void mi_vendor_cfg_rsp_proc();
+void set_random_adv_delay(int en);
+void bls_l2cap_requestConnParamUpdate_Normal();
+int telink_rand_num_generator(u8* p_buf, u8 len);
+int is_need_send_sec_nw_beacon();
+void tn_p256_dhkey_fast(u8 *r, u8 *s, u8 *x, u8 *y);
+void mbedtls_sha256_flash( unsigned long addr, size_t ilen, unsigned char output[32], int is224 );
 
+// ----------- mesh_log.c -------
+const char * get_op_string(u16 op, const char *str_in);
+
+
+// ------------ clock -----------
+#if (0 == __TLSR_RISCV_EN__)
+#if (CHIP_TYPE >= CHIP_TYPE_8258)
+    #if (CLOCK_SYS_CLOCK_HZ == 16000000)
+#define SYS_CLK_CRYSTAL     (SYS_CLK_16M_Crystal)
+    #elif (CLOCK_SYS_CLOCK_HZ == 24000000)
+#define SYS_CLK_CRYSTAL     (SYS_CLK_24M_Crystal)
+    #elif (CLOCK_SYS_CLOCK_HZ == 32000000)
+#define SYS_CLK_CRYSTAL     (SYS_CLK_32M_Crystal)
+    #elif (CLOCK_SYS_CLOCK_HZ == 48000000)
+#define SYS_CLK_CRYSTAL     (SYS_CLK_48M_Crystal)
+    #else
+#error clock not set properly
+    #endif
+#else
+#define SYS_CLK_CRYSTAL     // NULL
+#endif
+#endif
+
+void clock_switch_to_highest();
+void clock_switch_to_normal();
+
+static inline int is_tlk_gatt_ota_busy(){
+#if __TLSR_RISCV_EN__
+	return blotaSvr.ota_start_tick;
+#else
+	return blcOta.ota_start_flag;
+#endif
+}
+
+#if __TLSR_RISCV_EN__
+#include "stack/ble/controller/ll/ll_stack.h"
+
+ble_sts_t blc_ll_setScanEnable (scan_en_t scan_enable, dupFilter_en_t filter_duplicate);
+
+static inline u8 get_blt_state()
+{
+	return bltParam.blt_state;
+}
+
+static inline void set_blt_state(u8 st)
+{
+	bltParam.blt_state = st;
+}
+
+static inline u8 get_ble_state()
+{
+	return bltParam.ble_state;
+}
+
+static inline u8 get_blt_busy()
+{
+	return bltParam.blt_busy;
+}
+
+static inline void set_blt_busy(u8 busy)
+{
+	bltParam.blt_busy = busy;
+}
+#else
+extern u8 blt_state;
+extern u8 blt_busy;
+static inline u8 get_blt_state()
+{
+	return blt_state;
+}
+
+static inline void set_blt_state(u8 st)
+{
+	blt_state = st;
+}
+
+static inline u8 get_ble_state()
+{
+	return ble_state;
+}
+
+static inline u8 get_blt_busy()
+{
+	return blt_busy;
+}
+
+static inline void set_blt_busy(u8 busy)
+{
+	blt_busy = busy;
+}
+#endif
 
 /**
   * @}

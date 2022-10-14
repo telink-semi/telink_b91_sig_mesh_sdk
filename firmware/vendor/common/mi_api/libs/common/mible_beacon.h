@@ -3,6 +3,25 @@
 
 #include "mible_type.h"
 #include "mible_port.h"
+#include "ble_spec/mi_spec_type.h"
+
+#if defined ( __CC_ARM )
+__PACKED typedef struct{
+    uint16_t            obj_id;
+    int                 code;
+    uint8_t            *value;
+    uint8_t            *len;
+}property_operation_obj_t;
+#elif defined   ( __GNUC__ )
+typedef struct __PACKED{
+    uint16_t            obj_id;
+    int                 code;
+    uint8_t            *value;
+    uint8_t            *len;
+}property_operation_obj_t;
+#endif
+
+typedef void (* property_operation_objid_callback_t)(property_operation_obj_t *o);
 
 typedef enum {
     MI_EVT_BASE          = 0x0000,
@@ -27,37 +46,23 @@ typedef enum {
 
 } mibeacon_obj_name_t;
 
-#if defined ( __CC_ARM )
-__packed struct miot_spec_property_s{
-    uint8_t        piid;
-    uint8_t         len;
-    void*           val;
-};
-#elif defined ( __GNUC__ )
-struct miot_spec_property_s{
-    uint8_t        piid;
-    uint8_t         len;
-    void*           val;
-} __PACKED;
-#endif
-typedef struct miot_spec_property_s miot_spec_property_t;
 
-#if defined ( __CC_ARM )
-__packed struct miot_spec_open_lock_event_s {
-    uint8_t  action : 4;
-    uint8_t  method : 4;
-    uint32_t user_id;
-    uint32_t time;
-};
-#elif defined ( __GNUC__ )
-struct miot_spec_open_lock_event_s {
-    uint8_t  action : 4;
-    uint8_t  method : 4;
-    uint32_t user_id;
-    uint32_t time;
-} __PACKED;
-#endif
-typedef struct miot_spec_open_lock_event_s miot_spec_open_lock_event_t;
+typedef union {
+    struct{
+        uint16_t piid : 9;
+        uint16_t flag : 1;
+        uint16_t siid : 4;
+        uint16_t head : 2;
+    }prop;
+    struct{
+        uint16_t eiid : 9;
+        uint16_t flag : 1;
+        uint16_t siid : 4;
+        uint16_t head : 2;
+    }event;
+    uint16_t all;
+} spec_id_v2_t;
+
 
 /**
  * @brief   Set adv data with mibeacon and user customized data.
@@ -118,7 +123,7 @@ mible_status_t mibeacon_adv_stop(void);
  * OBJ_ADV_TIMEOUT_MS  : the time one object will be continuously sent.
  *
  */
-int mibeacon_obj_enque(uint16_t nm, uint8_t len, void *val, uint8_t stop_adv);
+int mibeacon_obj_enque(uint16_t nm, uint8_t len, void *val, uint8_t stop_adv, uint8_t isUrgent);
 
 
 /**
@@ -128,7 +133,7 @@ int mibeacon_obj_enque(uint16_t nm, uint8_t len, void *val, uint8_t stop_adv);
  *          [in] piid: property id
  *          [in] len: length of the property value
  *          [in] val: pointer to the property value
- *          [in] stop_adv: When the object queue is sent out, it will SHUTDOWN BLE advertising
+ *          [in] isUrgent: if enqueue this object into a high priority queue
  *
  * @return  MI_SUCCESS             Successfully enqueued a object into the object queue.
  *          MI_ERR_DATA_SIZE       Object value length is too long.
@@ -147,16 +152,15 @@ int mibeacon_obj_enque(uint16_t nm, uint8_t len, void *val, uint8_t stop_adv);
  * OBJ_ADV_TIMEOUT_MS  : the time one object will be continuously sent.
  *
  */
-int miot_spec_property_changed(uint8_t siid, uint8_t piid, uint8_t len, void* val, uint8_t stop_adv);
+int mibeacon_property_changed(uint8_t siid, uint16_t piid, property_value_t *newValue, uint8_t isUrgent);
  
 /**
  * @brief   Enqueue a SPEC event into the mibeacon object tx queue.
  *
  * @param   [in] siid: service id
- *          [in] eiid: property id
- *          [in] piid_num: number of properties
- *          [in] properties_array: the array of property structs
- *          [in] stop_adv: When the object queue is sent out, it will SHUTDOWN BLE advertising
+ *          [in] eiid: event id
+ *          [in] val: user should build properties value into parameter "val" in order
+ *          [in] isUrgent: if enqueue this object into a high priority queue
  *
  * @return  MI_SUCCESS             Successfully enqueued a object into the object queue.
  *          MI_ERR_DATA_SIZE       Object value length is too long.
@@ -164,6 +168,10 @@ int miot_spec_property_changed(uint8_t siid, uint8_t piid, uint8_t len, void* va
  *          MI_ERR_INTERNAL        Can not invoke the sending handler.
  *
  * @note    This function ONLY works when the device has been registered and has restored the keys.
+ *
+ * @note    spec v2 do not support lock event, secure product (eg. lock) should use mibeacon_obj_enque
+ *
+ * @note    Users should build properties value into parameter "val" in order
  *
  * The mibeacon object is an adv message contains the status or event. BLE gateway
  * can receive the beacon message (by BLE scanning) and upload it to server for
@@ -175,24 +183,19 @@ int miot_spec_property_changed(uint8_t siid, uint8_t piid, uint8_t len, void* va
  * OBJ_ADV_TIMEOUT_MS  : the time one object will be continuously sent.
  *
  */
-int miot_spec_event_occurred(uint8_t siid, uint8_t eiid, uint8_t piid_num, miot_spec_property_t* properties_array, uint8_t stop_adv);
+int mibeacon_event_occurred(uint8_t siid, uint16_t eiid, arguments_t *newArgs, uint8_t isUrgent);
+
 
 /**
- * @brief   Enqueue a SPEC lock event into the mibeacon object tx queue.
+ * @brief   mibeacon set adv_timeout to stop adv
  *
- * @param   [in] siid: service id
- *          [in] eiid: property id
- *          [in] len: length of
- *          [in] val: the pointer to open lock event structs
- *          [in] stop_adv: When the object queue is sent out, it will SHUTDOWN BLE advertising
+ * @param   [in] timeout: timeout to stop adv , number of milliseconds
  *
- * @return  MI_SUCCESS             Successfully enqueued a object into the object queue.
- *          MI_ERR_DATA_SIZE       Object value length is too long.
- *          MI_ERR_RESOURCES       Object queue is full. Please try again later.
- *          MI_ERR_INTERNAL        Can not invoke the sending handler.
+ * @note    timeout == 0  means to stop adv immediately
  *
- * @note    This function ONLY works when the device has been registered and has restored the keys.
- *          This function ONLY works for open lock event.
+ * @note    timeout == 0xFFFFFFFF  means not to stop adv
+ *
+ * @note    timeout == 30min (30*60*1000) is recommended
  *
  * The mibeacon object is an adv message contains the status or event. BLE gateway
  * can receive the beacon message (by BLE scanning) and upload it to server for
@@ -204,6 +207,25 @@ int miot_spec_event_occurred(uint8_t siid, uint8_t eiid, uint8_t piid_num, miot_
  * OBJ_ADV_TIMEOUT_MS  : the time one object will be continuously sent.
  *
  */
-int miot_spec_open_lock_event_occurred(uint8_t siid, uint8_t eiid, uint8_t len, miot_spec_open_lock_event_t* val, uint8_t stop_adv);
+int mibeacon_set_adv_timeout(uint32_t timeout);
+
+int mibeacon_get_registered_state(void);
+
+void advertising_init(uint8_t solicite_bind);
+
+mible_status_t advertising_start(uint16_t adv_interval_ms);
+
+void advertising_stop(void);
+
+/**
+ *@brief    register property get call back
+ */
+int mible_user_property_get_callback_register(property_operation_objid_callback_t user_prop_get_cb, uint16_t adv_interval_ms);
+
+ /**
+ *@brief    add an object into the period adv list
+ *@param    [in]obj_id: the object id to be added into the list
+ */
+int mibeacon_period_obj_add(uint16_t obj_id);
 
 #endif

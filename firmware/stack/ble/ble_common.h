@@ -1,38 +1,30 @@
 /********************************************************************************************************
- * @file	ble_common.h
+ * @file     ble_common.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par		Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd.
- *			All rights reserved.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			The information contained herein is confidential property of Telink
- *          Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *          of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *          Co., Ltd. and the licensee or the terms described here-in. This heading
- *          MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or  
- *          alter) any information contained herein in whole or in part except as expressly authorized  
- *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible  
- *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)  
- *          or alteration(s).
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
- *          Licensees are granted free, non-transferable use of the information in this
- *          file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
- *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
+
 #ifndef BLE_COMMON_H
 #define BLE_COMMON_H
 
-#include "ble_config.h"
-#include "ble_stack.h"
 #include "tl_common.h"
-
-
 
 
 
@@ -105,7 +97,7 @@ typedef enum {
     HCI_ERR_MAC_CONN_FAILED                                        = 0x3F,
     HCI_ERR_COARSE_CLOCK_ADJUSTMENT_REJECT						   = 0x40,
     HCI_ERR_TYPE0_SUBMAP_NOT_DEFINED							   = 0x41,
-    HCI_ERR_UNKNOWN_ADV_INDENTIFIER								   = 0x42,
+	HCI_ERR_UNKNOWN_ADV_IDENTIFIER								   = 0x42,
     HCI_ERR_LIMIT_REACHED										   = 0x43,
     HCI_ERR_OP_CANCELLED_BY_HOST								   = 0x44,
     HCI_ERR_PACKET_TOO_LONG										   = 0x45,
@@ -156,6 +148,17 @@ typedef enum {
 	IAL_ERR_ISO_TX_FIFO_NOT_ENOUGH,
 	IAL_ERR_SDU_BUFF_INVALID,
 
+	//Service status
+	SERVICE_ERR_INVALID_PARAMETER 								   = 0xD0,
+
+	//Application buffer check error code
+	LL_ACL_RX_BUF_NO_INIT 							   	  		   = 0xE0,
+	LL_ACL_RX_BUF_PARAM_INVALID,
+	LL_ACL_RX_BUF_SIZE_NOT_MEET_MAX_RX_OCT,
+	LL_ACL_TX_BUF_NO_INIT,
+	LL_ACL_TX_BUF_PARAM_INVALID,
+	LL_ACL_TX_BUF_SIZE_MUL_NUM_EXCEED_4K,
+	LL_ACL_TX_BUF_SIZE_NOT_MEET_MAX_TX_OCT,
 
 } ble_sts_t;
 
@@ -378,6 +381,20 @@ typedef enum {
 	DATA_TYPE_MANUFACTURER_SPECIFIC_DATA 	= 0xFF,     //	Manufacturer Specific Data
 }data_type_t;
 
-#include "./hci/hci_event.h"
+/**
+ * @brief	6 = header(2)+l2cap_len(2)+CID(2)
+ */
+#define		CAL_MTU_BUFF_SIZE(n)				(((n + 6) + 3)/4 * 4)
+
+/**
+ * @brief      get SDK and Lib version.User should get at least 5 bytes,first 5 bytes show the SDK
+ * 			   version and the rest is reserved for future.
+ * 			   For example, if the number you get is {3,4,0,0,1} after call this API(DEC), it stands for
+ * 			   the SDK version is 3.4.0.0 patch 1.
+ * @param[in]  pbuf - the point of buffer to store version message.
+ * @param[in]  number - the length of version message,should be 5 to 16.
+ * @return     0:success  1:number is invalid
+ */
+unsigned char blc_get_sdk_version(unsigned char *pbuf,unsigned char number);
 
 #endif

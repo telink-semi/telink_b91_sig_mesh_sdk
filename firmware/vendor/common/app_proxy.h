@@ -1,23 +1,26 @@
 /********************************************************************************************************
- * @file     app_proxy.h 
+ * @file	app_proxy.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #ifndef APP_PROXY_H
 #define APP_PROXY_H
@@ -118,11 +121,6 @@ enum{
 };
 
 typedef struct{
-	u16 list_data[MAX_LIST_LEN];
-	u8 list_idx[(MAX_LIST_LEN+7)/8];
-}list_mag_str;
-
-typedef struct{
 	u8 use_directed;
 	u16 client_addr;
 	u8 	client_2nd_ele_cnt;
@@ -130,8 +128,7 @@ typedef struct{
 
 typedef struct{
 	u8 filter_type;
-	list_mag_str white_list;
-	list_mag_str black_list;
+	u16 addr_list[MAX_LIST_LEN];
 	#if MD_DF_EN
 	u8 proxy_client_type;
 	direct_proxy_server_t directed_server[NET_KEY_MAX];
@@ -148,17 +145,16 @@ typedef struct{
 	u8 err_flag ;
 	u32 sar_tick ;
 }mesh_proxy_protocol_sar_t;
-extern mesh_proxy_protocol_sar_t  proxy_sar;
+extern _align_4_ mesh_proxy_protocol_sar_t  proxy_sar;
 
-extern void proxy_cfg_list_init();
 extern u8 proxy_config_dispatch(u8 *p,u8 len );
 extern u8 proxy_filter_change_by_mesh_net(u16 unicast_adr);
 
 extern u8 set_proxy_adv_pkt(u8 *p ,u8 *pRandom,mesh_net_key_t *p_netkey,u8*p_len);
 
-extern u8 find_data_in_mag_list(u16 src,proxy_config_mag_str *p_mag_list);
-extern proxy_config_mag_str proxy_mag;
+extern _align_4_ proxy_config_mag_str proxy_mag;
 extern int is_valid_adv_with_proxy_filter(u16 src);
+int is_proxy_client_addr(u16 addr);
 extern void proxy_cfg_list_init_upon_connection();
 extern void set_proxy_initial_mode(u8 special_mode);
 extern void set_pair_login_ok(u8 val);
@@ -169,5 +165,14 @@ int proxy_adv_calc_with_node_identity(u8 random[8],u8 node_key[16],u16 ele_adr,u
 int proxy_adv_calc_with_private_net_id(u8 random[8],u8 net_id[8],u8 idk[16],u8 hash[8]);
 int proxy_adv_calc_with_private_node_identity(u8 random[8],u8 node_key[16],u16 ele_adr,u8 hash[8]);
 
+extern u8 proxy_Out_ccc[2];
+extern u8 proxy_In_ccc[2];
+extern u8 provision_In_ccc[2];
+extern u8 provision_Out_ccc[2];
+void reset_all_ccc();
+int pb_gatt_provision_out_ccc_cb(void *p);
+int	pb_gatt_Write (void *p);
+int proxy_out_ccc_cb(void *p);
+int proxy_gatt_Write(void *p);
 #endif 
 

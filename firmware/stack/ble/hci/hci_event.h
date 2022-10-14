@@ -1,37 +1,32 @@
 /********************************************************************************************************
- * @file	hci_event.h
+ * @file     hci_event.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par		Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd.
- *			All rights reserved.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			The information contained herein is confidential property of Telink
- *          Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *          of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *          Co., Ltd. and the licensee or the terms described here-in. This heading
- *          MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or  
- *          alter) any information contained herein in whole or in part except as expressly authorized  
- *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible  
- *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)  
- *          or alteration(s).
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
- *          Licensees are granted free, non-transferable use of the information in this
- *          file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
- *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
+
 #ifndef HCI_EVENT_H_
 #define HCI_EVENT_H_
 
-#include <stack/ble/hci/hci.h>
-#include "stack/ble/ble_config.h"
+
 #include "stack/ble/ble_common.h"
-#include "stack/ble/ble_stack.h"
+
 
 /**
  *  @brief  Definition for general HCI event packet
@@ -69,6 +64,13 @@ typedef struct {
 	numCmpPktParamRet_t retParams[1];//TODO
 } hci_numOfCmpPktEvt_t;
 
+typedef struct{
+	u8  status;
+	u16 connHandle;
+	u8  verNr;
+	u16 compId;
+	u16 subVerNr;
+}hci_readRemVerInfoCmplEvt_t;
 
 typedef struct {
 	hci_type_t type;
@@ -89,11 +91,7 @@ typedef struct {
 	u8	reason;
 } event_disconnection_t;
 
-typedef struct {
-	u8         status;
-	u16        connHandle;
-	u8         reason;
-} hci_disconnectionCompleteEvt_t;
+
 
 
 
@@ -106,11 +104,6 @@ typedef struct {
 	u8  enc_enable;
 } event_enc_change_t;
 
-typedef struct {
-	u8         status;
-	u16        connHandle;
-	u8         encryption_enable;
-} hci_le_encryptEnableEvt_t;
 
 /**
  *  @brief  Event Parameters for "7.7.39 Encryption Key Refresh Complete event"
@@ -123,13 +116,15 @@ typedef struct {
 typedef struct {
 	u8         status;
 	u16        connHandle;
-} hci_le_encryptKeyRefreshEvt_t;
+	u8         reason;
+} hci_disconnectionCompleteEvt_t;
 
+typedef struct {
+	u8         status;
+	u16        connHandle;
+	u8         encryption_enable;
+} hci_le_encryptEnableEvt_t;
 
-
-/**
- *  @brief  Event Parameters for "7.7.65.1 LE Connection Complete event"
- */
 typedef struct {
 	u8	subcode;
 	u8	status;
@@ -141,20 +136,49 @@ typedef struct {
 	u16	latency;
 	u16	timeout;
 	u8	accuracy;
-} event_connection_complete_t;
+} event_connection_complete_t;			//20-byte
 
+typedef struct {
+	u8	subcode;
+	u8	status;
+	u16	handle;
+	u16	interval;
+	u16	latency;
+	u16	timeout;
+} event_connection_update_t;			//20-byte
+
+/**
+ *  @brief  Definition for HCI Encryption Key Refresh Complete event
+ */
+typedef struct {
+	u8         status;
+	u16        connHandle;
+} hci_le_encryptKeyRefreshEvt_t;
+
+
+
+/**
+ *  @brief  Event Parameters for "7.7.65.1 LE Connection Complete event"
+ */
 typedef struct {
 	u8         subEventCode;
 	u8         status;
 	u16        connHandle;
 	u8         role;
 	u8         peerAddrType;
-	u8         peerAddr[BLE_ADDR_LEN];
+	u8         peerAddr[6];
 	u16        connInterval;
 	u16        slaveLatency;
 	u16        supervisionTimeout;
 	u8         masterClkAccuracy;
 } hci_le_connectionCompleteEvt_t;
+
+
+/* ACL Connection Role */
+typedef enum {
+	LL_ROLE_MASTER 	= 0,
+	LL_ROLE_SLAVE 	= 1,
+} acl_conection_role_t;
 
 /**
  *  @brief  Event Parameters for "7.7.65.2 LE Advertising Report event"
@@ -183,15 +207,6 @@ typedef enum {
 /**
  *  @brief  Event Parameters for "7.7.65.3 LE Connection Update Complete event"
  */
-typedef struct {
-	u8	subcode;
-	u8	status;
-	u16	handle;
-	u16	interval;
-	u16	latency;
-	u16	timeout;
-} event_connection_update_t;
-
 typedef struct {
 	u8         subEventCode;
 	u8         status;
@@ -277,7 +292,6 @@ typedef struct {
 } hci_le_generateDHKeyCompleteEvt_t;
 
 
-
 /**
  *  @brief  Event Parameters for "7.7.65.10 LE Enhanced Connection Complete event"
  */
@@ -292,8 +306,8 @@ typedef struct {
 	u8         Peer_RslvPrivAddr[6];
 	u16        connInterval;
 	u16        conneLatency;
-	u16        superTimeout;
-	u8         mca;
+	u16        supervisionTimeout;
+	u8         masterClkAccuracy;
 } hci_le_enhancedConnCompleteEvt_t;
 
 
@@ -314,34 +328,67 @@ typedef struct {
 /**
  *  @brief  Event Parameters for "7.7.65.13 LE Extended Advertising Report event"
  */
+typedef struct{
+	u16		event_type;
+	u8		address_type;
+	u8		address[6];
+	u8		primary_phy;
+	u8		secondary_phy;
+	u8		advertising_sid;
+	u8		tx_power;
+	u8		rssi;
+	u16		perd_adv_inter;	// Periodic_Advertising_Interval
+	u8		direct_address_type;
+	u8		direct_address[6];
+	u8		data_length;  //24
+	u8		data[1];
+} extAdvEvt_info_t;
 
-typedef struct {
-	//TODO
+typedef struct{
+	u8		subEventCode;
+	u8		num_reports;
+	u8		advEvtInfo[1];
 } hci_le_extAdvReportEvt_t;
-
 
 
 /* Extended Advertising Report Event Event_Type mask*/
 typedef enum{
-	AEXT_ADV_RPT_EVT_MASK_CONNECTABLE				=	BIT(0),
+	EXT_ADV_RPT_EVT_MASK_CONNECTABLE				=	BIT(0),
 	EXT_ADV_RPT_EVT_MASK_SCANNABLE     				=	BIT(1),
 	EXT_ADV_RPT_EVT_MASK_DIRECTED  				    =   BIT(2),
 	EXT_ADV_RPT_EVT_MASK_SCAN_RESPONSE     			=	BIT(3),
 	EXT_ADV_RPT_EVT_MASK_LEGACY          			=	BIT(4),
-	EXT_ADV_RPT_EVT_MASK_DATA_STATUS          		=	(BIT(5) | BIT(6)),
+	//EXT_ADV_RPT_EVT_MASK_DATA_STATUS          		=	(BIT(5) | BIT(6)),
 }extAdvRptEvtMask_t;
 
 
 /* Extended Advertising Report Event_Type */
 typedef enum{
-	EXT_ADV_RPT_EVT_TYPE_ADV_IND 				       	= 0x0013,		//  0001 0011'b
-	EXT_ADV_RPT_EVT_TYPE_ADV_DIRECT_IND			       	= 0x0015,		//  0001 0101'b
-	EXT_ADV_RPT_EVT_TYPE_ADV_SCAN_IND	 				= 0x0012,		//  0001 0010'b
-	EXT_ADV_RPT_EVT_TYPE_ADV_NONCONN_IND				= 0x0010,		//  0001 0000'b
-	EXT_ADV_RPT_EVT_TYPE_SCAN_RSP_2_ADV_IND				= 0x001B,		//  0001 1011'b
-	EXT_ADV_RPT_EVT_TYPE_SCAN_RSP_2_ADV_SCAN_IND		= 0x001A,		//  0001 1010'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_ADV_IND 				       	= 0x0013,		//  0001 0011'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_ADV_DIRECT_IND			       	= 0x0015,		//  0001 0101'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_ADV_SCAN_IND	 				= 0x0012,		//  0001 0010'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_ADV_NONCONN_IND					= 0x0010,		//  0001 0000'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_SCAN_RSP_2_ADV_IND				= 0x001B,		//  0001 1011'b
+	EXT_ADV_RPT_EVT_TYPE_LEGACY_SCAN_RSP_2_ADV_SCAN_IND			= 0x001A,		//  0001 1010'b
+
+
+	//TODO
+//	EXT_ADV_RPT_EVT_TYPE_EXTENDED_NON_CONNECTABLE_NON_SCANNABLE_UNDIRECTED    	    = 0x0000,		//  0000 0000'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
+//	EXT_ADV_RPT_EVT_TYPE_EXTENDED_CONNECTABLE_UNDIRECTED       				 	  	= 0x0001,		//  0000 0001'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
+//	EXT_ADV_RPT_EVT_TYPE_SCANNABLE_UNDIRECTED						        = 0x0002,		//  0000 0010'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
+//	EXT_ADV_RPT_EVT_TYPE_NON_CONNECTABLE_NON_SCANNABLE_DIRECTED				= 0x0004,		//  0000 0100'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
+//	EXT_ADV_RPT_EVT_TYPE_CONNECTABLE_DIRECTED			       				= 0x0005,		//  0000 0101'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
+//	EXT_ADV_RPT_EVT_TYPE_SCANNABLE_DIRECTED								    = 0x0006,		//  0000 0110'b		ADV_EXT_IND + AUX_ADV_IND/AUX_CHAIN_IND
 }extAdvRptEvtType_t;  //extended advertising report event type
 
+
+/* Address type */
+typedef enum{
+	EXTADV_RPT_PUBLIC_DEVICE_ADDRESS				=	0x00,
+	EXTADV_RPT_RANDOM_DEVICE_ADDRESS     			=	0x01,
+	EXTADV_RPT_PUBLIC_IDENTITY_ADDRESS  			=   0x02,
+	EXTADV_RPT_RANDOM_IDENTITY_ADDRESS     			=	0x03,
+}ext_adv_adr_type_t;
 
 
 /**
@@ -471,7 +518,7 @@ typedef struct {
 	u16			maxPDU;
 	u16			isoIntvl;
 	u8			numBis;
-	u16		    bisHandles[BIS_IN_BIG_NUM_MAX];
+	u16		    bisHandles[1];//BIS_IN_BIG_NUM_MAX];
 } hci_le_createBigCompleteEvt_t;
 
 
@@ -501,7 +548,7 @@ typedef struct {
 	u16			maxPDU;
 	u16			isoIntvl;
 	u8			numBis;
-	u16         bisHandles[BIS_IN_BIG_NUM_MAX];
+	u16         bisHandles[1];//BIS_IN_BIG_NUM_MAX];
 } hci_le_bigSyncEstablishedEvt_t;
 
 
@@ -523,19 +570,16 @@ typedef struct {
 
 
 
-
-int	hci_le_cisEstablished_evt(u8 status, u16 cisHandle, u8 cigSyncDly[3], u8 cisSyncDly[3], u8 transLaty_m2s[3], u8 transLaty_s2m[3], u8 phy_m2s,
+int	 hci_le_cisEstablished_evt(u8 status, u16 cisHandle, u8 cigSyncDly[3], u8 cisSyncDly[3], u8 transLaty_m2s[3], u8 transLaty_s2m[3], u8 phy_m2s,
 		                      u8 phy_s2m, u8 nse, u8 bn_m2s, u8 bn_s2m, u8 ft_m2s, u8 ft_s2m, u16 maxPDU_m2s, u16 maxPDU_s2m, u16 isoIntvl );
-int hci_le_cisReq_evt(u16 aclHandle, u16 cisHandle, u8 cigId, u8 cisId);
-int hci_le_craeteBigComplete_evt(u8 staus, u8 bigHandle, u8 bigSyncDly[3], u8 transLatyBig[3], u8 phy, u8 nse,
-								 u8 bn, u8 pto, u8 irc, u16 maxPDU, u16 isoIntvl,  u8 numBis, u16 bisHandles[BIS_IN_BIG_NUM_MAX]);
-int hci_le_terminateBigComplete_evt(u8 bigHandle, u8 reason);
-int hci_le_bigSyncEstablished_evt(u8 staus, u8 bigHandle, u8 transLatyBig[3], u8 nse, u8 bn, u8 pto, u8 irc,
-		                          u16 maxPDU, u16 isoIntvl,  u8 numBis, u16 bisHandles[BIS_IN_BIG_NUM_MAX]);
-int hci_le_bigSyncLost_evt(u8 bigHandle, u8 reason);
+int  hci_le_cisReq_evt(u16 aclHandle, u16 cisHandle, u8 cigId, u8 cisId);
 
-
-
+int  hci_le_craeteBigComplete_evt(u8 staus, u8 bigHandle, u8 bigSyncDly[3], u8 transLatyBig[3], u8 phy, u8 nse,
+								  u8 bn, u8 pto, u8 irc, u16 maxPDU, u16 isoIntvl, u8 numBis, u16* bisHandles);
+int  hci_le_terminateBigComplete_evt(u8 bigHandle, u8 reason);
+int  hci_le_bigSyncEstablished_evt(u8 staus, u8 bigHandle, u8 transLatyBig[3], u8 nse, u8 bn, u8 pto, u8 irc,
+		                          u16 maxPDU, u16 isoIntvl,  u8 numBis, u16* bisHandles);
+int  hci_le_bigSyncLost_evt(u8 bigHandle, u8 reason);
 
 void hci_disconnectionComplete_evt(u8 status, u16 connHandle, u8 reason);
 int  hci_cmdComplete_evt(u8 numHciCmds, u8 opCode_ocf, u8 opCode_ogf, u8 paraLen, u8 *para, u8 *result);
@@ -555,12 +599,16 @@ void hci_le_data_len_update_evt(u16 connhandle,u16 effTxOctets, u16 effRxOctets,
 
 
 int hci_le_longTermKeyRequest_evt(u16 connHandle, u8* random, u16 ediv, u8* result);
-int hci_le_readLocalP256KeyComplete_evt(u8* localP256Key, u8* result);
-int hci_le_generateDHKeyComplete_evt(u8* DHkey,  u8* result);
+int hci_le_readLocalP256KeyComplete_evt(u8* localP256Key, u8 status);
+int hci_le_generateDHKeyComplete_evt(u8* DHkey, u8 status);
+void hci_le_enhancedConnectionComplete_evt(u8 status, u16 connHandle, u8 role, u8 peerAddrType, u8 *peerAddr, u8 *loaclRpa, u8 *peerRpa,
+                                           u16 connInterval, u16 connLatency, u16 supervisionTimeout, u8 masterClkAccuracy);
 int hci_le_encryptChange_evt(u16 connhandle,  u8 encrypt_en);
 int hci_le_encryptKeyRefresh_evt(u16 connhandle);
 
 int hci_remoteNateReqComplete_evt (u8* bd_addr);
+
+
 #endif /* HCI_EVENT_H_ */
 
 

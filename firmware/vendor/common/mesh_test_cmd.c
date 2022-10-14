@@ -1,37 +1,40 @@
 /********************************************************************************************************
- * @file     mesh_test_cmd.c 
+ * @file	mesh_test_cmd.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/ble/blt_config.h"
 #include "vendor/common/user_config.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
 #include "proj_lib/mesh_crypto/mesh_crypto.h"
-#include "drivers/9518/pm.h"
+#include "proj_lib/pm.h"
 #include "app_proxy.h"
 #include "app_health.h"
 #include "mesh_test_cmd.h"
 
 #if 0
 #if SEC_MES_DEBUG_EN
-mesh_cmd_bear_seg_t B_test_cmd = {
+mesh_cmd_bear_t B_test_cmd = {
     /*.trans_par_val = */0,
     /*.len =       */0,
     /*.type =     */MESH_ADV_TYPE_MESSAGE,
@@ -39,19 +42,19 @@ mesh_cmd_bear_seg_t B_test_cmd = {
 
 void mesh_message6()
 {
-    mesh_cmd_bear_seg_t *p_bear = (mesh_cmd_bear_seg_t *)&B_test_cmd;
+    mesh_cmd_bear_t *p_bear = (mesh_cmd_bear_t *)&B_test_cmd;
     if(mesh_adv_tx_cmd_sno < 0x3129ab){
         mesh_adv_tx_cmd_sno = 0x3129ab;
     }
     
     // lower layer
-    //p_bear->lt.aid = 0;
-    p_bear->lt.akf = 0;
-    //p_bear->lt.seg = 1;
-    //p_bear->lt.segN = 1;
-    //p_bear->lt.segO = 0;
-    //p_bear->lt.seqzero = sno;// & BIT_MASK_LEN(13);
-    p_bear->lt.szmic = 0;
+    //p_bear->lt_seg.aid = 0;
+    p_bear->lt_seg.akf = 0;
+    //p_bear->lt_seg.seg = 1;
+    //p_bear->lt_seg.segN = 1;
+    //p_bear->lt_seg.segO = 0;
+    //p_bear->lt_seg.seqzero = sno;// & BIT_MASK_LEN(13);
+    p_bear->lt_seg.szmic = 0;
     
     // network layer
     //p_bear->nw.nid = 0x68;
@@ -96,16 +99,16 @@ void mesh_message_fri_msg()
 #endif
 
 #if SEC_MES_DEBUG_EN
-    mesh_cmd_bear_seg_t *p_bear = (mesh_cmd_bear_seg_t *)&B_test_cmd;
+    mesh_cmd_bear_t *p_bear = (mesh_cmd_bear_t *)&B_test_cmd;
 
     // lower layer
-    //p_bear->lt.aid = 0;
-    p_bear->lt.akf = 0;
-    //p_bear->lt.seg = 1;
-    //p_bear->lt.segN = 1;
-    //p_bear->lt.segO = 0;
-    //p_bear->lt.seqzero = sno;// & BIT_MASK_LEN(13);
-    p_bear->lt.szmic = 0;
+    //p_bear->lt_seg.aid = 0;
+    p_bear->lt_seg.akf = 0;
+    //p_bear->lt_seg.seg = 1;
+    //p_bear->lt_seg.segN = 1;
+    //p_bear->lt_seg.segO = 0;
+    //p_bear->lt_seg.seqzero = sno;// & BIT_MASK_LEN(13);
+    p_bear->lt_seg.szmic = 0;
     
     // network layer
     //p_bear->nw.nid = 0x68;
@@ -256,9 +259,12 @@ void test_cmd_tdebug()
 		static u8 test_onoff;
 		u32 len = OFFSETOF(mesh_cmd_g_onoff_set_t,transit_t);	// no delay 
 		u8 cmd_buf[32] = {0};
-		memset(cmd_buf, 0xaa, sizeof(cmd_buf));
+		//memset(cmd_buf, 0xaa, sizeof(cmd_buf));
 		mesh_cmd_g_onoff_set_t *cmd = (mesh_cmd_g_onoff_set_t *)cmd_buf;
 		cmd->onoff = (test_onoff++) & 1;
+		cmd->tid = 0;
+		cmd->transit_t = 0;
+		cmd->delay = 0;
 		if(A_key_seg){
 			len += 13;	// test segment;
 		}
@@ -289,3 +295,37 @@ void power_on_io_proc(u8 i)
 }
 #endif
 
+#if IV_UPDATE_TEST_EN
+void mesh_iv_update_test_initiate()
+{
+	static u8 st_sw2_last;	
+	u8 st_sw2 = !gpio_read(SW2_GPIO);
+	if(!(st_sw2_last)&&st_sw2){ // dispatch just when you press the button 
+		if(IV_UPDATE_NORMAL == iv_idx_st.update_proc_flag){
+			#if 1
+			if(mesh_adv_tx_cmd_sno < IV_UPDATE_START_SNO){
+				mesh_adv_tx_cmd_sno = IV_UPDATE_START_SNO;
+			}
+	        LOG_MSG_LIB(TL_LOG_IV_UPDATE,(u8 *)&iv_idx_st, sizeof(iv_idx_st),"SW:trigger to step1 later,current iv is: ",0);
+			#else
+			mesh_increase_ivi(iv_idx_st.cur);
+	        mesh_iv_update_set_start_flag(1);   // should be keep search flag when trigger by self after power up.
+	        LOG_MSG_INFO(TL_LOG_IV_UPDATE,(u8 *)&iv_idx_st, sizeof(iv_idx_st),"SW:IV index enter step1: ",0);
+	        #endif
+		}
+		else{
+			LOG_MSG_INFO(TL_LOG_IV_UPDATE,(u8 *)&iv_idx_st, sizeof(iv_idx_st),"IV is in step:%d! ",iv_idx_st.update_proc_flag);
+		}
+		cfg_led_event(LED_EVENT_FLASH_1HZ_1S);
+	}
+	st_sw2_last = st_sw2;
+
+	
+	static u8 st_sw1_last;	
+	u8 st_sw1 = !gpio_read(SW1_GPIO);
+	if(!(st_sw1_last)&&st_sw1){ // dispatch just when you press the button 
+		LOG_MSG_INFO(TL_LOG_IV_UPDATE,(u8 *)&iv_idx_st, sizeof(iv_idx_st),"printf IV:step:%d! ",iv_idx_st.update_proc_flag);
+	}
+	st_sw1_last = st_sw1;
+}
+#endif

@@ -1,29 +1,31 @@
 /********************************************************************************************************
- * @file     factory_reset.c 
+ * @file	factory_reset.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #include "tl_common.h"
 #include "proj_lib/ble/blt_config.h"
 #include "proj_lib/ble/service/ble_ll_ota.h"
-#include "proj_lib/ble/ll//ll.h"
+#include "stack/ble/ble.h"
 #include "app_beacon.h"
 
 //FLASH_ADDRESS_EXTERN;
@@ -41,6 +43,28 @@ extern u8 manual_factory_reset;
 
 #if !WIN32
 static int adr_reset_cnt_idx = 0;
+
+typedef void (*mesh_start_reboot_t) (void);
+
+/*_attribute_no_inline_ */void mesh_start_reboot()
+{
+#if 1
+	start_reboot();
+#else
+	#if (MCU_CORE_TYPE < MCU_CORE_8258)
+	// no retention for 826x
+	#elif ((MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
+    write_reg16 (0x40004, 0);	// one of functions is retention flag of cstartup, so need to clear and will be set again in cpu wakeup init.
+	#else
+#error please confirm ram address of retention flag in cstartup.
+	#endif
+	
+	mesh_start_reboot_t  fun_0 = 0x00;
+	fun_0(); // approximate to reboot. user can remove some initial function in main_() to keep some setting, such as PWM.
+	while(1);
+#endif
+}
+
 
 #if 0   // org mode
 static int reset_cnt = 0;
@@ -175,6 +199,10 @@ int factory_reset_cnt_check ()
 	return 0;
 }
 
+#if __TLSR_RISCV_EN__
+#error can not use this mode for B9x chip due to flash type and flash base address.
+#endif
+
 #else
 
 /****************************************
@@ -204,6 +232,9 @@ void	reset_cnt_clean ()
 	{
 		return;
 	}
+#if FACTORY_RESET_LOG_EN
+	LOG_USER_MSG_INFO(0,0,"flash erase\r\n",0);
+#endif
 	flash_erase_sector (FLASH_ADR_RESET_CNT);
 	adr_reset_cnt_idx = 0;
 }
@@ -212,6 +243,9 @@ void write_reset_cnt (u8 cnt) // reset cnt value from 1 to 254, 0 is invalid cnt
 {
     reset_cnt_clean ();
 	flash_write_page (FLASH_ADR_RESET_CNT + adr_reset_cnt_idx, 1, (u8 *)(&cnt));
+#if FACTORY_RESET_LOG_EN
+	LOG_USER_MSG_INFO(0,0,"flash write page action\r\n",0);
+#endif
 }
 
 void clear_reset_cnt ()
@@ -219,12 +253,30 @@ void clear_reset_cnt ()
     write_reset_cnt(RESET_CNT_INVALID);
 }
 
+#if __TLSR_RISCV_EN__
+#define READ_SIZE_RESET_CNT 	(64)
+#define RESET_CNT_SIZE			(8)		// due to max 64 times for writing one page, and each count nead to be set and cleared, so one page can store 64/2 = 32 times, then RESET_CNT_SIZE = 256/32 = 8.
+STATIC_ASSERT(BIT_IS_POW2(READ_SIZE_RESET_CNT) && (READ_SIZE_RESET_CNT > RESET_CNT_SIZE));
+STATIC_ASSERT(BIT_IS_POW2(RESET_CNT_SIZE));
+#else
+#define RESET_CNT_SIZE			(1)
+#endif
+
 void reset_cnt_get_idx ()		//return 0 if unconfigured
 {
-	u8 *pf = (u8 *)(FLASH_ADR_RESET_CNT+FLASH_R_BASE_ADDR);
-	for (adr_reset_cnt_idx=0; adr_reset_cnt_idx<4096; adr_reset_cnt_idx++)
+	for (adr_reset_cnt_idx=0; adr_reset_cnt_idx<4096; adr_reset_cnt_idx+=RESET_CNT_SIZE)
 	{
+		#if __TLSR_RISCV_EN__
+		// if want to use pointer to read flash, must add FLASH_R_BASE_ADDR and initiate offset of 0x140104 which is max by default.
+		u8 pf[READ_SIZE_RESET_CNT];
+        if ((adr_reset_cnt_idx & (READ_SIZE_RESET_CNT - 1)) == 0){
+			flash_read_page (FLASH_ADR_RESET_CNT + adr_reset_cnt_idx, sizeof(pf), pf);
+        }
+	    u8 restcnt = pf[adr_reset_cnt_idx & (READ_SIZE_RESET_CNT - 1)];
+		#else
+		u8 *pf = (u8 *)(FLASH_ADR_RESET_CNT);
 	    u8 restcnt = pf[adr_reset_cnt_idx];
+	    #endif
 		if (restcnt != RESET_CNT_INVALID)	//end
 		{
 		    if(0xFF == restcnt){
@@ -235,6 +287,9 @@ void reset_cnt_get_idx ()		//return 0 if unconfigured
 			break;
 		}
 	}
+#if FACTORY_RESET_LOG_EN
+    LOG_USER_MSG_INFO(0,0,"get adr_reset_cnt_idx %d\r\n",adr_reset_cnt_idx);
+#endif
 }
 
 u8 get_reset_cnt () // reset cnt value from 1 to 254, 0 is invalid cnt
@@ -251,7 +306,7 @@ void increase_reset_cnt ()
 	    reset_cnt = 0;
 	}else if(reset_cnt){
 	    clear_reset_cnt();      // clear current BYTE and then use next BYTE
-        adr_reset_cnt_idx++;
+        adr_reset_cnt_idx+=RESET_CNT_SIZE;
 	}
 	
 	reset_cnt++;
@@ -265,9 +320,9 @@ int factory_reset_handle ()
 {
     reset_cnt_get_idx();   
 	if(get_reset_cnt() == RESET_TRIGGER_VAL){
-	    #if MANUAL_FACTORY_RESET_TX_STATUS_EN
-	    manual_factory_reset = 1;
-        #else
+		#if MANUAL_FACTORY_RESET_TX_STATUS_EN
+		send_and_wait_completed_reset_node_status();
+        #endif
         irq_disable();
         factory_reset();
             #if DUAL_MODE_WITH_TLK_MESH_EN
@@ -277,8 +332,7 @@ int factory_reset_handle ()
         LOG_USER_MSG_INFO(0,0,"factory reset success\r\n",0);
             #endif
         show_ota_result(OTA_SUCCESS);
-	    start_reboot();
-	    #endif
+	    mesh_start_reboot();
 	}else{
         increase_reset_cnt();
 	}
@@ -321,14 +375,8 @@ int factory_reset_cnt_check ()
 #endif
 #endif
 
-#if XIAOMI_MODULE_ENABLE
-STATIC_ASSERT(MI_BLE_MESH_CER_ADR == (FLASH_ADR_PAR_USER_MAX - 4096));
-#endif
-
-#if FLASH_2M_ENABLE
-#error TODO
-
-int factory_reset() // 1M flash
+#if FLASH_PLUS_ENABLE
+int factory_reset() // flash plus
 {
 	u32 r = irq_disable ();
 	for(int i = 0; i < (FLASH_ADR_AREA_1_END - FLASH_ADR_AREA_1_START) / 4096; ++i){
@@ -367,7 +415,10 @@ int factory_reset() // 1M flash
         flash_erase_sector(FLASH_ADR_USER_MESH_START + i*0x1000);
     }
 	#endif
-	
+	#if DU_ENABLE
+	flash_erase_sector(DU_STORE_ADR);
+	flash_erase_sector(DU_OTA_REBOOT_ADR);
+	#endif
 	CB_USER_FACTORY_RESET_ADDITIONAL();
     flash_erase_sector(FLASH_ADR_RESET_CNT);    // at last should be better, when power off during factory reset erase.
     irq_restore(r);
@@ -390,20 +441,26 @@ int factory_reset(){
 		}
 	}
 	
-	for(int i = 0; i < (FLASH_ADR_PAR_USER_MAX - (FLASH_ADR_AREA_2_END)) / 4096; ++i){
-        u32 adr = (FLASH_ADR_AREA_2_END + i*0x1000);
+	for(int i = 1; i < (FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096; ++i){
 		#if XIAOMI_MODULE_ENABLE
-        if((adr != MI_BLE_MESH_CER_ADR) // the last sector is FLASH_ADR_MI_AUTH
-	        #if DUAL_VENDOR_EN
-	    &&(adr != FLASH_ADR_THREE_PARA_ADR)
-	        #endif
-	    ){
-		    flash_erase_sector(adr);
+		if(i < (((FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096) - 1)){ // the last sector is FLASH_ADR_MI_AUTH
+            u32 adr = (CFG_SECTOR_ADR_CALIBRATION_CODE + i*0x1000);
+		    #if DUAL_VENDOR_EN
+		    if(adr != FLASH_ADR_THREE_PARA_ADR)
+		    #endif
+		    {
+			    flash_erase_sector(adr);
+			}
 		}
 		#else
-		adr = adr; //flash_erase_sector(adr);
+		//flash_erase_sector(CFG_SECTOR_ADR_CALIBRATION_CODE + i*0x1000);
 		#endif
 	}
+
+	#if DU_ENABLE
+	flash_erase_sector(DU_STORE_ADR);
+	flash_erase_sector(DU_OTA_REBOOT_ADR);
+	#endif
 
 	#if DUAL_MODE_ADAPT_EN
 	if(DUAL_MODE_NOT_SUPPORT != dual_mode_state){   // dual_mode_state have been init before
@@ -419,25 +476,31 @@ int factory_reset(){
 }
 #endif
 
-void kick_out(){
+void kick_out(int led_en){
 	#if !WIN32
 	// add terminate cmd 
-	if(blt_state == BLS_LINK_STATE_CONN){
+	if(bls_ll_isConnectState()){
 		bls_ll_terminateConnection (0x13);
-	}
+		sleep_us(500000);   // wait terminate send completed.
+	}	
 	#endif
-	sleep_us(500000);   // wait tx buffer send completed.
-    factory_reset();
+	
     #if DUAL_MODE_WITH_TLK_MESH_EN
     UI_resotre_TLK_4K_with_check();
     #endif
-#if 0
+#if 0 // not erase network info, user can revert network info by reboot or call mesh_revert_network()
 	mesh_reset_network(1);
 	show_factory_reset();
+#if FAST_PROVISION_ENABLE
+	mesh_fast_prov_val_init();
+#endif
 #else
+	factory_reset();
     #if !WIN32
-    show_factory_reset();
-    start_reboot();
+    if(led_en){
+        show_factory_reset();
+    }
+    mesh_start_reboot();
     #endif
 #endif
 }

@@ -1,25 +1,27 @@
 /********************************************************************************************************
- * @file     directed_forwarding.h 
+ * @file	directed_forwarding.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #ifndef DIRECTED_FORWARDING_H
 #define DIRECTED_FORWARDING_H
 #include "tl_common.h"
@@ -28,8 +30,8 @@
 #define DIRECTED_PROXY_EN					FEATURE_PROXY_EN
 #define DIRECTED_FRIEND_EN					FEATURE_FRIEND_EN
 
-#define MAX_FIXED_PATH						32
-#define MAX_NON_FIXED_PATH					(PTS_TEST_EN?4:64)
+#define MAX_FIXED_PATH						(PTS_TEST_EN?4:4)
+#define MAX_NON_FIXED_PATH					(PTS_TEST_EN?4:16)
 #define MAX_DEPENDENT_NUM					(MAX_LPN_NUM+2) // 2 for directed client
 
 #define MAX_DSC_TBL							(PTS_TEST_EN?4:0x10)
@@ -141,6 +143,12 @@ enum{
 	DEPENDENT_TYPE_ADD,	
 };
 
+enum{
+	ECHO_INVL_DISABLE,
+	ECHO_INVL_VALID=0x63,
+	ECHO_INVL_NOT_CHANGE=0xff,
+};
+
 #define GET_PATH_LIFETIME_MS(lifetime)     (((lifetime==PATH_LIFETIME_12MINS) ? 12*60 : (  \
 					                 (lifetime==PATH_LIFETIME_2HOURS) ? 2*60*60 : (  \
 					                 (lifetime==PATH_LIFETIME_24HOURS) ? 24*60*60 : 10*24*60*60 \
@@ -150,6 +158,63 @@ enum{
 
 
 #define GET_LANE_GUARD_INTERVAL_MS(guard_interval)		(guard_interval?LANE_GUARD_INTERVAL_10S:LANE_GUARD_INTERVAL_2S)
+
+// directed forwarding message
+typedef struct{
+	u8 directed_forwarding;
+	u8 directed_relay;
+	u8 directed_proxy;
+	u8 directed_proxy_directed_default;
+	u8 directed_friend;
+}directed_control_t;
+
+typedef struct{
+	u8  metric_type:3;	
+	u8  path_lifetime:2;
+	u8  rfu:3;
+}path_metric_t;
+
+typedef struct{
+	s8 default_rssi_threshold;
+	s8 rssi_margin;
+}rssi_threshold_t;
+
+typedef struct{
+	u16 node_paths;
+	u16 relay_paths;
+	u16 proxy_paths;
+	u16 friend_paths;
+}directed_paths_t;
+
+typedef struct{
+	u16 path_monitoring_interval;
+	u16 path_discovery_retry_interval;
+	u8 path_discovery_interval:1;
+	u8 lane_discovery_guard_interval:1;
+	u8 prohibited:6;
+}discovery_timing_t;
+
+typedef struct{
+	directed_control_t directed_control;
+	path_metric_t path_metric;
+	u8 max_concurrent_init;
+	u8 wanted_lanes;
+	u8 two_way_path;
+	u8 unicast_echo_interval;
+	u8 multicast_echo_interval;
+}mesh_directed_subnet_state_t;
+
+typedef struct{
+	mesh_directed_subnet_state_t subnet_state[NET_KEY_MAX];
+	mesh_transmit_t transmit;
+	mesh_transmit_t relay_transmit;
+	rssi_threshold_t rssi_threshold;
+	directed_paths_t directed_paths;
+	discovery_timing_t discovery_timing;
+	mesh_transmit_t	control_transmit;
+	mesh_transmit_t	control_relay_transmit;
+}mesh_directed_forward_t;
+
 typedef struct{
 	u16 netkey_index;
 	directed_control_t directed_control;	
@@ -222,27 +287,24 @@ typedef struct{
 	u8  dependent_target_list_size;
 	u16 addr[1];
 }forwarding_tbl_dependengts_delete_t;
-
-enum{
- 	DEPENDENT_GET_PATH_ORIGIN_MATCH = BIT(0),
- 	DEPENDENT_GET_DESTINATION_MATCH = BIT(1),
-};
  
 typedef struct{
 	u16 netkey_index:12;
-	u16 dependents_list_mask:2;
+	u16 path_origin_mask:1;
+	u16 path_target_mask:1;
 	u16 fixed_path_flag:1;
 	u16 prohibited:1;
 	u16 start_index;
 	u16 path_origin;
 	u16 destination;
-	u16 update_identifier; // optinal
+	u16 up_id; // optinal
 }forwarding_tbl_dependents_get_t;
 
 typedef struct{
 	u8 status;
 	u16 netkey_index:12;
-	u16 dependents_list_mask:2;
+	u16 path_origin_mask:1;
+	u16 path_target_mask:1;
 	u16 fixed_path_flag:1;
 	u16 prohibited:1;
 	u16 start_index;
@@ -382,13 +444,15 @@ typedef struct{
 
 typedef struct{
 	u16 netkey_index;
-	u8 path_echo_interval;
+	u8 unicast_echo_interval;
+	u8 multicast_echo_interval;
 }path_echo_interval_set_t;
 
 typedef struct{
 	u8 status;
 	u16 netkey_index;
-	u8 path_echo_interval;
+	u8 unicast_echo_interval;
+	u8 multicast_echo_interval;
 }path_echo_interval_sts_t;
 
 typedef struct{
@@ -492,7 +556,7 @@ typedef struct{
 
 typedef struct{
 	non_fixed_entry_t path[MAX_NON_FIXED_PATH];
-	u16 update_id;
+//	u16 update_id; // use model_sig_g_df_sbr_cfg.df_cfg.fixed_fwd_tbl[netkey_offset].update_id instead
 }non_fixed_fwd_tbl_t;
 
 typedef struct{	
@@ -503,6 +567,7 @@ typedef struct{
 
 typedef struct{
 	u8 path_need;
+	u8 path_pending;
 	u32 discovery_timer;
 	u32 discovery_guard_timer;
 	u32 discovery_retry_timer;
@@ -550,16 +615,14 @@ typedef struct{
 #endif
 }model_df_cfg_t;
 
-
-extern u32 mesh_md_df_addr;
-extern model_df_cfg_t 	model_sig_df_cfg;
+extern int path_monitoring_test_mode;
 
 int is_directed_forwarding_en(u16 netkey_offset);
 int is_directed_relay_en(u16 netkey_offset);
 int is_directed_proxy_en(u16 netkey_offset);
 int is_directed_friend_en(u16 netkey_offset);
 int is_directed_forwarding_op(u16 op);
-int is_path_target(u16 destination);
+int is_path_target(u16 origin, u16 destination);
 u8 get_directed_proxy_dependent_ele_cnt(u16 netkey_offset, u16 addr);
 u8 get_directed_friend_dependent_ele_cnt(u16 netkey_offset, u16 addr);
 int is_proxy_use_directed(u16 netkey_offset);
@@ -574,15 +637,22 @@ int directed_forwarding_dependents_update_start(u16 netkey_offset, u8 type, u16 
 void mesh_directed_forwarding_proc(u8 *p_bear, u8 *par, int par_len, int src_type);
 int is_address_in_dependent_list(path_entry_com_t *p_fwd_entry, u16 addr);
 int forwarding_tbl_dependent_add(u16 range_start, u8 range_length, path_addr_t *p_dependent_list);
+int directed_forwarding_solication_start(u16 netkey_offset, mesh_ctl_path_request_solication_t *p_addr_list, u8 list_num);
 
 discovery_entry_par_t * get_discovery_entry_correspond2_path_request(u16 netkey_offset, u16 path_origin, u8 forwarding_number);
 int cfg_cmd_send_path_request(mesh_ctl_path_req_t *p_path_req, u8 len, u16 netkey_offset);
 int cfg_cmd_path_metric_get(u16 node_adr, u16 nk_idx);
 int cfg_cmd_path_metric_set(u16 node_adr, u16 nk_idx, u8 metric_type, u8 lifetime);
 
- #if (MD_SERVER_EN&&!WIN32)
+#if !WIN32
 int mesh_cmd_sig_cfg_directed_control_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_directed_control_set(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
+#else
+#define mesh_cmd_sig_cfg_directed_control_get							(0)	
+#define mesh_cmd_sig_cfg_directed_control_set							(0)	
+#endif
+ 
+ #if (MD_SERVER_EN&&!FEATURE_LOWPOWER_EN&&!WIN32)
 int mesh_cmd_sig_cfg_path_metric_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_path_metric_set(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_dsc_tbl_capa_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
@@ -616,8 +686,7 @@ int mesh_cmd_sig_cfg_directed_control_network_transmit_set(u8 *par, int par_len,
 int mesh_cmd_sig_cfg_directed_control_relay_transmit_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_directed_control_relay_transmit_set(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 #else
-#define mesh_cmd_sig_cfg_directed_control_get							(0)
-#define mesh_cmd_sig_cfg_directed_control_set							(0)	
+//#define mesh_cmd_sig_cfg_directed_control_set							(0)	
 #define mesh_cmd_sig_cfg_path_metric_get								(0)
 #define mesh_cmd_sig_cfg_path_metric_set								(0)
 #define mesh_cmd_sig_cfg_dsc_tbl_capa_get								(0)

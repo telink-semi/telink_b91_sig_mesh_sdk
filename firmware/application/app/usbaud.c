@@ -1,57 +1,31 @@
 /********************************************************************************************************
- * @file	usbaud.c
+ * @file     usbaud.c
  *
- * @brief	for TLSR chips
+ * @brief    This is the source file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-#include "../../common/config/user_config.h"
 
-#include "../../drivers.h"
-
+#include "drivers.h"
 #include "usbaud.h"
-//#include "../usbstd/usbhw.h"
-//#include "../usbstd/usbhw_i.h"
-#include "../usbstd/usb.h"
-#include "../usbstd/audioClassCommon.h"
+#include "application/usbstd/usb.h"
+#include "application/usbstd/AudioClassCommon.h"
+#include "application/rf_frame.h"
 
 /*************************************************
  * g_audio_hid_chg:
@@ -65,7 +39,6 @@
 static speaker_setting_t speaker_setting;
 static mic_setting_t mic_setting;
 void usbaud_set_audio_mode(int iso_en, int mono_en) {
-    assert(USB_EDP_MIC < 8);
 	SET_FLD(reg_usb_ep_ctrl(USB_EDP_MIC), FLD_USB_EP_EOF_ISO | FLD_USB_EP_MONO);
 }
 
@@ -113,7 +86,6 @@ u8 usbaud_handle_report(u8 c) {
 	if (USB_REPORT_NO_EVENT == c) {
 		return USB_REPORT_NO_EVENT;
 	}
-    assert(USB_EDP_AUDIO < 8);
 	if(reg_usb_ep_ctrl(USB_EDP_AUDIO) & FLD_USB_EP_BUSY)
 		return c;
 
@@ -300,7 +272,7 @@ int usbaud_handle_get_mic_cmd(int req, int type) {
 	return 0;
 }
 void usbaud_init(void) {
-	if (USB_MIC_ENABLE && 1 == MIC_CHANNLE_COUNT) {
+	if (USB_MIC_ENABLE && 1 == MIC_CHANNEL_COUNT) {
 		usbaud_set_audio_mode(1, 1);
 	}
 #if (USB_SPEAKER_ENABLE)

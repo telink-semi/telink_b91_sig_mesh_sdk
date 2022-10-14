@@ -1,29 +1,32 @@
 /********************************************************************************************************
- * @file     user_proc.c 
+ * @file	user_proc.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #include "user_proc.h"
 #include "app_health.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
 #include "vendor/common/lighting_model.h"
+#include "vendor/common/generic_model.h"
 #include "vendor_model.h"
 #include "fast_provision_model.h"
 #include "proj_lib/mesh_crypto/aes_att.h"
@@ -32,7 +35,15 @@
 
 
 #if(AIS_ENABLE)
+extern const u16 du_pri_service_uuid_16 ;
+extern const u16 ais_pri_service_uuid ;
+	#if DU_ENABLE
+#include "user_du.h"
+#include "vendor/common/mi_api/telink_sdk_mible_api.h"
+#define AIS_DEVICE_NAME	"Mesh__Du"
+	#else
 #define AIS_DEVICE_NAME	"Mesh Ali"
+	#endif
 u8 ais_pri_data_set(u8 *p)
 {
 	u8 device_name[]={AIS_DEVICE_NAME};
@@ -40,8 +51,13 @@ u8 ais_pri_data_set(u8 *p)
 	//service uuid
 	p[0] = 3;
 	p[1] = 2;//imcomplete  service uuid
-	p[2] = 0xb3;
-	p[3] = 0xfe;
+	#if DU_ENABLE
+	p[2] = du_pri_service_uuid_16&0xff;
+	p[3] = du_pri_service_uuid_16>>8;
+	#else
+	p[2] = ais_pri_service_uuid&0xff;
+	p[3] = ais_pri_service_uuid>>8;
+	#endif
 	//name
 	p[4] = name_len + 1;
 	p[5] = 0x09;
@@ -95,7 +111,7 @@ void user_node_oob_set()
 {
 	#if CERTIFY_BASE_ENABLE
 	if(cert_base_func_init()){
-		set_node_prov_para_pubkey_no_oob();
+		cert_base_oob_set();
 		prov_para.cert_base_en =1;
 		// need to set the flag of the certify base flag in the oob part 
 		u16 oob_info_data = BIT(OOB_PROV_RECORD)|BIT(OOB_CERT_BASE);
@@ -105,6 +121,7 @@ void user_node_oob_set()
 	}else{
 		prov_para.cert_base_en =0;
 	}	
+	return ;
 	#endif
 
     if(AIS_ENABLE || (MESH_USER_DEFINE_MODE == MESH_AES_ENABLE)){
@@ -118,7 +135,7 @@ void user_node_oob_set()
             u8 oob[16] = {0xff};
 			mesh_set_dev_auth(oob,sizeof(oob));
         }else{
-			u8 oob[16] = {0};
+			u8 oob[32] = {0};
 			if(memcmp(dev_auth, oob, 16)){
 				set_node_prov_para_no_pubkey_static_oob();// static oob
 			}
@@ -130,25 +147,19 @@ void user_node_oob_set()
     }
 }
 
-u8 user_mac_proc()
-{
-	if(AIS_ENABLE && !MI_API_ENABLE){// not need to set the tbl mac address
-		return 1;
-	}else{
-        return 0;
-	}
-}
 
 #if MD_SERVER_EN
 void user_power_on_proc()
 {
-    #if ((MESH_USER_DEFINE_MODE != MESH_SPIRIT_ENABLE)&&!MI_API_ENABLE)
+    #if ((MESH_USER_DEFINE_MODE != MESH_SPIRIT_ENABLE)&&(MESH_USER_DEFINE_MODE != MESH_TAIBAI_ENABLE)&&!MI_API_ENABLE)
     foreach(i,LIGHT_CNT){
         u16 adr_src = ele_adr_primary + (ELE_CNT_EVERY_LIGHT * i);
         #if MD_LIGHTNESS_EN
         mesh_tx_cmd_lightness_st(i, adr_src, 0xffff, LIGHTNESS_STATUS, 0, 0);
         #elif MD_LEVEL_EN
         mesh_tx_cmd_g_level_st(i, adr_src, 0xffff, 0, 0); // not support lightness as default
+        #elif MD_ONOFF_EN
+        mesh_tx_cmd_g_onoff_st(i, adr_src, 0xffff, 0, 0, G_ONOFF_STATUS);   // will send every onoff status
         #endif
     }
     #endif
@@ -159,9 +170,11 @@ void user_mesh_cps_init()
 {
 	if(AIS_ENABLE){
 		//gp_page0->head.cid = g_vendor_id;     // have been set default value
+		#if !DU_ENABLE
 		gp_page0->head.pid = 0;
 		gp_page0->head.vid = 0x0001;
 		gp_page0->head.crpl = 100;
+		#endif
 	}else{
 	    // use pre-define value
 	}
@@ -181,19 +194,28 @@ void user_set_def_sub_adr()
 
 void user_system_time_proc()
 {
-#if(AIS_ENABLE)
+#if(AIS_ENABLE && !SPIRIT_PRIVATE_LPN_EN)
+	#if !DU_ENABLE
+	// in the du mode ,it will not stop send unprovision beacon 
 	sha256_dev_uuid_str *p_uuid = (sha256_dev_uuid_str *)prov_para.device_uuid;
 	if((p_uuid->adv_flag == 0)&&(clock_time_exceed_s(beacon_send.start_time_s, 10*60))){
 		beacon_send.inter = 60*1000*1000;
 		p_uuid->adv_flag = 1;
 	}
+	#endif
 #endif
 }
 
 //if return 0, will not send transation ack for link open cmd
 int user_node_rc_link_open_callback()
 {
-	#if (MESH_USER_DEFINE_MODE == MESH_SPIRIT_ENABLE)
+	#if (MESH_USER_DEFINE_MODE == MESH_SPIRIT_ENABLE ||MESH_USER_DEFINE_MODE == MESH_TAIBAI_ENABLE)
+		#if DU_ENABLE
+			#if DU_LPN_EN
+			mi_mesh_state_set(1);
+			#endif
+			update_du_busy_s(60);
+		#endif
 	sha256_dev_uuid_str *p_uuid = (sha256_dev_uuid_str *)prov_para.device_uuid;
 	if(p_uuid->adv_flag){
 		return 0;
@@ -207,8 +229,13 @@ int user_node_rc_link_open_callback()
 void mesh_provision_para_init(u8 *p_random)
 {
 	mesh_provision_para_reset();
+	#if URI_DATA_ADV_ENABLE
+	prov_para.oob_info[0]=BIT(OOB_URI);
+	prov_para.oob_info[1]=0x00;
+	#else
 	prov_para.oob_info[0]=0x00;
 	prov_para.oob_info[1]=0x00;
+	#endif
 	provision_mag.pro_stop_flag = 1;// make the provisioner to initial state to stop
 	//provision_mag.unicast_adr_last =1;
 	prov_para.ele_cnt =1;

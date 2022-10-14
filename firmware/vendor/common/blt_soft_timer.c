@@ -1,61 +1,37 @@
 /********************************************************************************************************
- * @file	blt_soft_timer.c
+ * @file     blt_soft_timer.c
  *
- * @brief	for TLSR chips
+ * @brief    This is the source file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-#if 1
 
-#include "stack/ble/ble.h"
+
 #include "tl_common.h"
-#include "../common/blt_soft_timer.h"
-
-
-
-
-#if (BLT_SOFTWARE_TIMER_ENABLE)
-
-
-
+#if (BLT_SOFTWARE_TIMER_ENABLE && (MCU_CORE_TYPE != MCU_CORE_8269))
+#if(MCU_CORE_TYPE == MCU_CORE_8258)
+#include "stack/ble/ble.h"
+#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+#include "stack/ble_8278/ble.h"
+#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+#include "stack/ble/ble.h"
+#endif
+#include "blt_soft_timer.h"
 
 _attribute_data_retention_	blt_soft_timer_t	blt_timer;
 
@@ -84,9 +60,9 @@ int  blt_soft_timer_sort(void)
 				if(TIME_COMPARE_BIG(blt_timer.timer[j].t, blt_timer.timer[j+1].t))
 				{
 					//swap
-					tmemcpy(temp, &blt_timer.timer[j], sizeof(blt_time_event_t));
-					tmemcpy(&blt_timer.timer[j], &blt_timer.timer[j+1], sizeof(blt_time_event_t));
-					tmemcpy(&blt_timer.timer[j+1], temp, sizeof(blt_time_event_t));
+					memcpy(temp, &blt_timer.timer[j], sizeof(blt_time_event_t));
+					memcpy(&blt_timer.timer[j], &blt_timer.timer[j+1], sizeof(blt_time_event_t));
+					memcpy(&blt_timer.timer[j+1], temp, sizeof(blt_time_event_t));
 				}
 			}
 		}
@@ -106,7 +82,6 @@ int  blt_soft_timer_sort(void)
  */
 int blt_soft_timer_add(blt_timer_callback_t func, u32 interval_us)
 {
-	int i;
 	u32 now = clock_time();
 
 	if(blt_timer.currentNum >= MAX_TIMER_NUM){  //timer full
@@ -144,10 +119,12 @@ int  blt_soft_timer_delete_by_index(u8 index)
 
 
 	for(int i=index; i<blt_timer.currentNum - 1; i++){
-		tmemcpy(&blt_timer.timer[i], &blt_timer.timer[i+1], sizeof(blt_time_event_t));
+		memcpy(&blt_timer.timer[i], &blt_timer.timer[i+1], sizeof(blt_time_event_t));
 	}
 
 	blt_timer.currentNum --;
+
+	return 0;
 }
 
 /**
@@ -182,6 +159,26 @@ int 	blt_soft_timer_delete(blt_timer_callback_t func)
 	return 0;
 }
 
+int 	blt_soft_timer_update(blt_timer_callback_t func, u32 interval_us)
+{
+	blt_soft_timer_delete(func);
+	return blt_soft_timer_add(func, interval_us);
+}
+
+int is_soft_timer_exist(blt_timer_callback_t func)
+{
+	for(int i=0; i<blt_timer.currentNum; i++){
+		if(func == blt_timer.timer[i].cb){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+u8 blt_soft_timer_cur_num()
+{
+	return blt_timer.currentNum;
+}
 
 /**
  * @brief		This function is used to manage software timer tasks
@@ -263,4 +260,3 @@ void 	blt_soft_timer_init(void)
 
 
 #endif  //end of  BLT_SOFTWARE_TIMER_ENABLE
-#endif

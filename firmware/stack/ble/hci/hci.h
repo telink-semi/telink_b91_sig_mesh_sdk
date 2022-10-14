@@ -1,35 +1,30 @@
 /********************************************************************************************************
- * @file	hci.h
+ * @file     hci.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par		Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd.
- *			All rights reserved.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			The information contained herein is confidential property of Telink
- *          Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *          of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *          Co., Ltd. and the licensee or the terms described here-in. This heading
- *          MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or  
- *          alter) any information contained herein in whole or in part except as expressly authorized  
- *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible  
- *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)  
- *          or alteration(s).
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
- *          Licensees are granted free, non-transferable use of the information in this
- *          file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
- *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
+
 #pragma  once
 
 
-
-#include "stack/ble/ble_common.h"
+#include "stack/ble/ble_common.h"	// modify by haiwen
 
 typedef int (*blc_hci_rx_handler_t) (void);
 typedef int (*blc_hci_tx_handler_t) (void);
@@ -60,6 +55,25 @@ typedef int (*blc_hci_app_handler_t) (unsigned char *p);
 
 
 
+#if (MCU_CORE_TYPE == MCU_CORE_9518)
+	extern  my_fifo_t	hci_tx_iso_fifo;
+
+	typedef	struct {
+		u32		size;
+		u8		num;
+		u8		mask;
+		u8		wptr;
+		u8		rptr;
+		u8*		p;
+	}hci_fifo_t;
+
+	u8*  hci_fifo_wptr (hci_fifo_t *f);
+	u8*  hci_fifo_wptr_v2 (hci_fifo_t *f);
+	u8*  hci_fifo_get (hci_fifo_t *f);
+	void hci_fifo_pop (hci_fifo_t *f);
+	void hci_fifo_next (hci_fifo_t *f);
+#endif
+
 /**
  *  @brief  Definition for HCI packet type & HCI packet indicator
  */
@@ -69,7 +83,7 @@ typedef enum{
 	HCI_TYPE_SCO_DATA	= 0x03,
 	HCI_TYPE_EVENT  	= 0x04,
 	HCI_TYPE_ISO_DATA 	= 0x05,  //core_5.2
-	//-------- mesh
+	//-------- mesh // BLE_SRC_TELINK_MESH_EN
 	HCI_RSP_USER_START 			= 0x10,
 	HCI_RSP_USER 				= HCI_RSP_USER_START,	// line feeds
 	HCI_RSP_USER_END 			= 0x2F,
@@ -84,6 +98,7 @@ typedef enum{
 	DONGLE_REPORT_ATT_MTU		= 0x58,
     DONGLE_REPORT_ONLINE_ST_UUID= 0x59,
     DONGLE_REPORT_ONLINE_ST_DATA= 0x5a,
+    DONGLE_REPROT_READ_RSP		= 0x5b,
     MESH_CMD_RSP 				= 0x70,
     MESH_ADV_PAYLOAD 			= 0x71,
     MESH_PROV 					= 0x72,	// provision parmeters
@@ -162,13 +177,32 @@ typedef int (*hci_event_handler_t) (u32 h, u8 *para, int n);
 extern hci_event_handler_t		blc_hci_event_handler;
 
 
+#if (MCU_CORE_TYPE == MCU_CORE_825x || MCU_CORE_TYPE == MCU_CORE_827x)
+	int 	blc_acl_from_btusb ();
+	int 	blc_hci_tx_to_btusb (void);
+#endif
 
+#if (MCU_CORE_TYPE == MCU_CORE_9518)
+	/**
+	 * @brief      for user to initialize HCI TX FIFO.
+	 * @param[in]  pRxbuf - TX FIFO buffer address.
+	 * @param[in]  fifo_size - RX FIFO size
+	 * @param[in]  fifo_number - RX FIFO number, can only be 4, 8, 16 or 32
+	 * @return     status, 0x00:  succeed
+	 * 					   other: failed
+	 */
+	ble_sts_t 	blc_ll_initHciTxFifo(u8 *pTxbuf, int fifo_size, int fifo_number);
 
-
-
-
-
-
+	/**
+	 * @brief      for user to initialize HCI RX FIFO.
+	 * @param[in]  pRxbuf - RX FIFO buffer address.
+	 * @param[in]  fifo_size - RX FIFO size
+	 * @param[in]  fifo_number - RX FIFO number, can only be 4, 8, 16 or 32
+	 * @return     status, 0x00:  succeed
+	 * 					   other: failed
+	 */
+	ble_sts_t 	blc_ll_initHciRxFifo(u8 *pRxbuf, int fifo_size, int fifo_number);
+#endif
 
 
 
@@ -224,21 +258,21 @@ int blc_hci_proc (void);
 /******************************* User Interface  Begin *****************************************************************/
 /**
  * @brief      this function is used to set HCI EVENT mask
- * @param[in]  evtMask  -  HCI　EVENT　mask
+ * @param[in]  evtMask  -  HCI EVENT mask
  * @return     0
  */
 ble_sts_t	blc_hci_setEventMask_cmd(u32 evtMask);      //eventMask: BT/EDR
 
 /**
  * @brief      this function is used to set HCI LE EVENT mask
- * @param[in]  evtMask  -  HCI　LE EVENT　mask(BIT<0-31>)
+ * @param[in]  evtMask  -  HCI LE EVENT mask(BIT<0-31>)
  * @return     0
  */
 ble_sts_t	blc_hci_le_setEventMask_cmd(u32 evtMask);   //eventMask: LE event  0~31
 
 /**
  * @brief      this function is used to set HCI LE EVENT mask
- * @param[in]  evtMask  -  HCI　LE EVENT　mask(BIT<32-63>)
+ * @param[in]  evtMask  -  HCI LE EVENT mask(BIT<32-63>)
  * @return     0
  */
 ble_sts_t 	blc_hci_le_setEventMask_2_cmd(u32 evtMask_2);   //eventMask: LE event 32~63

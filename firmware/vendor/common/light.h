@@ -1,25 +1,27 @@
 /********************************************************************************************************
- * @file     light.h 
+ * @file	light.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #pragma once
 
 #include "tl_common.h"
@@ -38,16 +40,20 @@
 #define LED_INDICATE_VAL    (rgb_lumen_map[100])
 #define LED_INDICATE_LUM_VAL LED_INDICATE_VAL
 
-#if(CLOCK_SYS_CLOCK_HZ == 48000000)
-#define PWM_CLK_DIV_LIGHT   (1)
-#else
-#define PWM_CLK_DIV_LIGHT   (0)
-#endif
-
 #ifndef PWM_FREQ
 #define PWM_FREQ	        (600)   // unit: Hz
 #endif
-#define PWM_MAX_TICK        ((PWM_PCLK_SPEED / (PWM_CLK_DIV_LIGHT + 1)) / PWM_FREQ)
+
+#if __TLSR_RISCV_EN__
+#define PWM_MAX_TICK        (PWM_PCLK_SPEED / PWM_FREQ)
+#else
+	#if(CLOCK_SYS_CLOCK_HZ == 48000000)
+#define PWM_CLK_DIV_LIGHT   (1)
+	#else
+#define PWM_CLK_DIV_LIGHT   (0)
+	#endif
+#define PWM_MAX_TICK        ((CLOCK_SYS_CLOCK_HZ / (PWM_CLK_DIV_LIGHT + 1)) / PWM_FREQ)
+#endif
 //#define PMW_MAX_TICK		PWM_MAX_TICK
 
 #define LED_MASK							0x07
@@ -142,6 +148,9 @@
 #define LEVEL_OFF				(-32768)
 #define LUM_OFF					(0)
 
+#define HSL_HUE_CNT_TOTAL       (HSL_HUE_MAX + 1)
+#define HSL_HUE_CNT_TOTAL_HALF  (HSL_HUE_CNT_TOTAL / 2)
+
 #if (FEATURE_LOWPOWER_EN)
 #define ONPOWER_UP_SELECT       ONPOWER_UP_DEFAULT
 #elif (LIGHT_TYPE_SEL == TYPE_TOOTH_BRUSH)
@@ -166,9 +175,6 @@ enum ST_TRANS_TYPE{
     #if (LIGHT_TYPE_CT_EN)
 	ST_TRANS_CTL_D_UV,              // no level model related, assign at the end should be better.
     #endif
-	#if (MI_API_ENABLE)
-	ST_TRANS_MI_VENDOR_STS,
-	#endif
 	ST_TRANS_MAX,
     ST_TRANS_PUB_ONOFF = ST_TRANS_MAX,  // just use for publish,
 };
@@ -241,8 +247,8 @@ typedef struct{
 	// may add member here later
 }light_res_sw_trans_t;	// no need save
 
-extern light_res_sw_save_t light_res_sw_save[LIGHT_CNT];
-extern light_res_sw_trans_t light_res_sw[LIGHT_CNT];
+extern _align_4_ light_res_sw_save_t light_res_sw_save[LIGHT_CNT];
+extern _align_4_ light_res_sw_trans_t light_res_sw[LIGHT_CNT];
 
 #define set_level_current_type(idx, type)	// do{light_res_sw[idx].level_current_type = type;}while(0)
 #define get_level_current_type(idx) 		//(light_res_sw[idx].level_current_type)
@@ -420,6 +426,8 @@ void increase_rx_onoff_cnt();
 u16 get_rx_cnts();
 void light_transition_onoff_manual(u8 onoff, u8 transit_t, u8 light_idx);
 void set_keep_onoff_state_after_ota();
+void clr_keep_onoff_state_after_ota();
+int is_state_after_ota();
 
 
 static inline u16 get_lightness_present(int light_idx)

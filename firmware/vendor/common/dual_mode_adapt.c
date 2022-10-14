@@ -1,27 +1,30 @@
 /********************************************************************************************************
- * @file     dual_mode_adapt.c 
+ * @file	dual_mode_adapt.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
 #if !WIN32
-#include "drivers/9518/watchdog.h"
+#include "proj/mcu/watchdog_i.h"
 #endif 
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/ble/blt_config.h"
@@ -30,13 +33,7 @@
 #include "app_health.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
 #include "mesh_common.h"
-#if (__TL_LIB_8258__ || MCU_CORE_TYPE == MCU_CORE_8258)
-#include "drivers/8258/rf_drv.h"
-#elif(MCU_CORE_TYPE == MCU_CORE_8278)
-#include "drivers/8278/rf_drv.h"
-#elif(MCU_CORE_TYPE == MCU_CORE_9518)
-#include "drivers/9518/rf.h"
-#endif
+#include "drivers.h"
 
 void rf_setTxModeNew(void);
 int is_zigbee_found();
@@ -154,6 +151,12 @@ int UI_resotre_TLK_4K_with_check()
 }
 #endif
 
+#if DUAL_MESH_SIG_PVT_EN
+u8 pair_nn[17] = MESH_NAME;
+u8 pair_pass[17] = MESH_PWD;
+u8 pair_ltk[17] = MESH_LTK;
+#endif
+
 #define START_UP_FLAG		(0x544c4e4b)
 
 void dual_mode_en_init()		// call in mesh_init_all();
@@ -218,6 +221,9 @@ void dual_mode_en_init()		// call in mesh_init_all();
 #endif
 
 	if(DUAL_MODE_SUPPORT_ENABLE == dual_mode_state){
+		#if DUAL_MESH_SIG_PVT_EN
+		tlk_mesh_key_init(pair_nn, pair_pass);
+		#endif
 		rf_link_light_event_callback(LGT_CMD_DUAL_MODE_MESH);
 	}
 }
@@ -265,9 +271,13 @@ void dual_mode_en_init(){}
 void dual_mode_disable(){};
 #endif
 
-#if DUAL_MODE_ADAPT_EN
+#if DUAL_MESH_ZB_BL_EN
 #define DUAL_MODE_SWITCH_INV_US		(3000*1000)
+#elif DUAL_MESH_SIG_PVT_EN
+#define DUAL_MODE_SWITCH_INV_US		(160*1000)
+#endif
 
+#if DUAL_MESH_ZB_BL_EN
 // ---------------------ZigBee driver
 
 #define			RF_MANUAL_AGC_MAX_GAIN	1
@@ -319,9 +329,7 @@ const TBLCMDSET  setting_rf_250k[] = {
 									reg_rf_irq_mask = FLD_RF_IRQ_RX | FLD_RF_IRQ_TX; \
 								}while(0)
 
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
 
 #define TP_2M_G0_DFT	 	0x40
 #define TP_2M_G1_DFT		0x39
@@ -481,16 +489,12 @@ void rf_drv_250k_new (void)
 {
 #if (__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269 )
 	write_reg32(0x800508,rf_buff_250k);
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
 	write_reg32(0x800c08,rf_buff_250k);
 #endif
 	rf_tp_baseNew = TP_2M_G0;
 	rf_tp_gainNew = TP_GET_GAIN(TP_2M_G0, TP_2M_G1);
-#if (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						(MCU_CORE_TYPE == MCU_CORE_8278)||
-						(MCU_CORE_TYPE == MCU_CORE_9518))
+#if (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
 	LoadTblCmdSet(setting_rf_250k_init, sizeof(setting_rf_250k_init)/sizeof(TBLCMDSET));
 #endif
 	LoadTblCmdSet(setting_rf_250k, sizeof(setting_rf_250k)/sizeof(TBLCMDSET));
@@ -499,9 +503,7 @@ void rf_drv_250k_new (void)
 void rf_recv_mode_250k_new(u16 mode, u16 size, u16 addr){
 #if (__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269 )
 	rf_buff_250k = (mode << 16) | (size << 16) | addr;
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
 	rf_buff_250k = (mode << 24) | (size << 16) | addr;
 #endif
 }
@@ -541,9 +543,7 @@ void rf_txNew(u8* buf, u8 len)
 	//trig
 #if (__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269 )
     write_reg8(0x800f00, 0x85);
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
     write_reg8(0x800c43, 0x04);
     reg_dma_tx_rdy0 |= FLD_DMA_CHN_RF_TX;
     //while((read_reg8(0x800f20) & 0x02) != 0x02);
@@ -567,9 +567,7 @@ _attribute_ram_code_ void rf_setTxModeNew(void)
     analog_write (TX_GAIN, rf_txTpGain);
 	//analog_write (0x06, 0x00);
 	//write_reg8(0x800f00, 0x80);
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
     //rf_trx_state_set(RF_MODE_TX, rf_curCh);
     rf_set_channel(chn, 0);
 
@@ -599,9 +597,7 @@ _attribute_ram_code_ void rf_setRxModeNew(void)
     write_reg8 (0x800f02, 0x45 | BIT(5));	// RX enable
     //analog_write (0x06, 0x00);
 	//write_reg8(0x800f00, 0x80);
-#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-						  (MCU_CORE_TYPE == MCU_CORE_8278)||
-						  (MCU_CORE_TYPE == MCU_CORE_9518))
+#elif (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
     //rf_trx_state_set(RF_MODE_RX, rf_curCh);
 
     rf_set_channel(chn, 0);
@@ -732,7 +728,7 @@ void dual_mode_zigbee_init(void){
 	reg_dma_rf_tx_addr = (u16)(u32)(rf_tx_buf);
 
 	//u8 * raw_pkt = (u8 *) (blt_rxfifo_b + (blt_rxfifo.wptr & (blt_rxfifo.num-1)) * blt_rxfifo.size);
-	rf_recv_mode_250k_new(FLD_DMA_WR_MEM, (128>>4), (u16)((u32)raw_pkt));
+	rf_recv_mode_250k_new(FLD_DMA_WR_MEM, (blt_rxfifo.size>>4), (u16)((u32)raw_pkt));
 	bufIdx = 0;
 	rf_drv_250k_new();
 
@@ -748,7 +744,7 @@ void dual_mode_zigbee_init(void){
 // ---------------------dual mode switch check
 int is_ble_found()
 {
-	return ((BLS_LINK_STATE_ADV != blt_state) || (get_provision_state() != STATE_DEV_UNPROV));
+	return ((BLS_LINK_STATE_ADV != get_blt_state()) || (get_provision_state() != STATE_DEV_UNPROV));
 }
 
 int is_zigbee_found()
@@ -805,9 +801,7 @@ u8 dual_mode_proc()
                     val_settle = REG_ADDR8(0xf04);  // init
 				}
 				
-				    #if (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || 
-											(MCU_CORE_TYPE == MCU_CORE_8278)||
-											(MCU_CORE_TYPE == MCU_CORE_9518))
+				    #if (__TL_LIB_8258__ || (MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
 				rf_ble_1m_param_recovery_from_zb();
 				rf_drv_init(RF_MODE_BLE_1M);    // it would init settle time and RF offset
 	            blc_ll_initBasicMCU();
@@ -842,6 +836,73 @@ u8 dual_mode_proc()
 
 	return RF_MODE_BLE;
 }
+#endif
+
+#if DUAL_MESH_SIG_PVT_EN
+
+		
+#define SYS_CHN_LISTEN_MESH     {2, 12, 23, 32}
+u8 sys_chn_listen[4] = SYS_CHN_LISTEN_MESH;
+
+u32 dual_mode_tlk_ac[2]; // [0]:access code, [1]:access code byte invert
+u8 dual_mode_mesh_found = DUAL_MODE_NETWORK_DEFAULT;
+
+void tlk_mesh_access_code_backup(u32 ac)
+{
+    dual_mode_tlk_ac[0] = ac;
+	endianness_swap_u32((u8 *)&ac);
+	dual_mode_tlk_ac[1] = ac;
+}
+
+void phy_set_telink_mesh_scan(int set_chn)
+{
+	u8 chn = sys_chn_listen[set_chn % 4];
+	rf_set_tx_rx_off ();
+	rf_set_ble_channel (chn);
+	rf_set_ble_access_code ((u8 *)dual_mode_tlk_ac);
+	rf_set_ble_crc_adv ();
+	rf_set_rxmode ();
+}
+
+u8 dual_mode_proc()
+{
+	if(DUAL_MODE_SUPPORT_ENABLE != dual_mode_state){
+		return RF_MODE_BLE;
+	}
+
+	static u32 dual_mode_tick;
+	if(dual_mode_mesh_found){
+		if(DUAL_MODE_NETWORK_SIG_MESH == dual_mode_mesh_found){
+			rf_mode = RF_MODE_BLE;
+			dual_mode_select();
+		}
+		else if(DUAL_MODE_NETWORK_PVT_MESH == dual_mode_mesh_found){
+			rf_mode = RF_MODE_PVT_MESH;
+			set_firmware_type_zb_with_factory_reset();
+			if(BLS_LINK_STATE_CONN == get_blt_state()){
+				bls_ll_terminateConnection (0x13);
+				sleep_us(500000);
+			}		
+			start_reboot();
+		}
+	}
+	else if(clock_time_exceed(dual_mode_tick, DUAL_MODE_SWITCH_INV_US)){
+		dual_mode_tick = clock_time();
+		u32 r = irq_disable();
+		if(rf_mode == RF_MODE_PVT_MESH){
+			rf_mode = RF_MODE_BLE;
+			bls_register_phy_scan_mode(0);
+		}
+		else
+		{
+			rf_mode = RF_MODE_PVT_MESH;
+			bls_register_phy_scan_mode(phy_set_telink_mesh_scan);// enable telink mesh scan
+		}
+		irq_restore(r);
+	}
+	return rf_mode;
+}
+
 #endif
 
 

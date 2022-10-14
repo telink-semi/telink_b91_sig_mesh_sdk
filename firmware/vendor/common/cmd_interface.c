@@ -1,25 +1,27 @@
 /********************************************************************************************************
- * @file     cmd_interface.c 
+ * @file	cmd_interface.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #if WIN32
 #include "../../../reference/tl_bulk/lib_file/host_fifo.h"
 #include "../../../reference/tl_bulk/lib_file/gatt_provision.h"
@@ -31,13 +33,15 @@
 #include "user_config.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
 #include "proj_lib/mesh_crypto/mesh_crypto.h"
-#include "drivers/9518/pm.h"
+#include "proj_lib/pm.h"
 #include "app_proxy.h"
 #include "app_health.h"
 #endif
 
+#include "subnet_bridge.h"
 #include "cmd_interface.h"
- 
+#include "solicitation_rpl_cfg_model.h"
+#include "app_heartbeat.h"
 //-----------access command--------
 int access_cmd_get_level(u16 adr,u32 rsp_max)
 {
@@ -79,28 +83,32 @@ int access_cmd_onoff(u16 adr_dst, u8 rsp_max, u8 onoff, int ack, transition_par_
 	mesh_cmd_g_onoff_set_t par = {0};
 	u32 par_len = OFFSETOF(mesh_cmd_g_onoff_set_t,transit_t);
 	par.onoff = onoff;
+#if EXTENDED_ADV_TX_TEST_EN
+	par_len = sizeof(mesh_cmd_g_onoff_set_t) + 100;
+#else
 	if(trs_par){
 		par_len = sizeof(mesh_cmd_g_onoff_set_t);
 		memcpy(&par.transit_t, trs_par, 2);
 	}
+#endif
 
 	return SendOpParaDebug(adr_dst, rsp_max, ack ? G_ONOFF_SET : G_ONOFF_SET_NOACK, 
 						   (u8 *)&par, par_len);
 }
-#else // for test
+#else // for long packet test
 typedef struct{
 	u8 onoff;
 	u8 tid;
 	u8 transit_t;
 	u8 delay;		// unit 5ms
-	u8 rsv[20];
+	u8 rsv[219];
 }mesh_cmd_g_onoff_set2_t;
 
 int access_cmd_onoff(u16 adr_dst, u8 rsp_max, u8 onoff, int ack, transition_par_t *trs_par)
 {
     //ack = 0;
 	mesh_cmd_g_onoff_set2_t par = {0};
-	u32 par_len = OFFSETOF(mesh_cmd_g_onoff_set2_t,transit_t);
+	u32 par_len = sizeof(par);//OFFSETOF(mesh_cmd_g_onoff_set2_t,transit_t);
 	par.onoff = onoff;
 	//if(trs_par){
 		par_len = sizeof(mesh_cmd_g_onoff_set2_t);
@@ -121,6 +129,22 @@ int access_cmd_onoff_get(u16 adr, u8 rsp_max)
 int cfg_cmd_cps_get(u16 node_adr, u8 page)
 {
 	return SendOpParaDebug (node_adr, 1, COMPOSITION_DATA_GET, &page, 1);
+}
+
+int cfg_cmd_large_cps_data_get(u16 node_adr, u8 page, u16 offset)
+{
+	large_cps_get_t cps;
+	cps.page = page;
+	cps.offset = offset;
+	return SendOpParaDebug (node_adr, 1, LARGE_CPS_GET, (u8 *)&cps, sizeof(cps));
+}
+
+int cfg_cmd_models_metadata_get(u16 node_adr, u8 page, u16 offset)
+{
+	models_meta_get_t meta;
+	meta.meta_page = page;
+	meta.offset = offset;
+	return SendOpParaDebug (node_adr, 1, MODELS_METADATA_GET, (u8 *)&meta, sizeof(meta));
 }
 
 int cfg_cmd_sub_get(u16 node_adr, u16 ele_adr, u16 md_id)
@@ -349,7 +373,11 @@ int cfg_cmd_nk_del(u16 node_adr, u16 nk_idx)
 
 int cfg_cmd_ak_set(u16 op, u16 node_adr, u16 nk_idx, u16 ak_idx, u8 *key)
 {
-	mesh_appkey_set_t set;
+#if __TLSR_RISCV_EN__
+	mesh_appkey_set_t set = {{0}}; // if no init, will warning uninitialized.
+#else
+	mesh_appkey_set_t set;	// no need initial to decrease 10 bytes code size.
+#endif
 	SET_KEY_INDEX(set.net_app_idx, nk_idx, ak_idx);
 	memcpy(set.appkey, key, sizeof(set.appkey));
 	return SendOpParaDebug(node_adr, 0, op, (u8 *)&set, sizeof(set));
@@ -367,7 +395,11 @@ int cfg_cmd_ak_update(u16 node_adr, u16 nk_idx, u16 ak_idx, u8 *key)
 
 int cfg_cmd_ak_del(u16 node_adr, u16 nk_idx, u16 ak_idx)
 {
-	mesh_appkey_set_t set;
+#if __TLSR_RISCV_EN__
+	mesh_appkey_set_t set = {{0}}; // if no init, will warning uninitialized.
+#else
+	mesh_appkey_set_t set;	// no need initial to decrease code size.
+#endif
 	SET_KEY_INDEX(set.net_app_idx, nk_idx, ak_idx);
 	return SendOpParaDebug(node_adr, 0, APPKEY_DEL, (u8 *)&set, sizeof(set.appkey));
 }
@@ -387,6 +419,137 @@ int cfg_cmd_ak_bind(u16 node_adr, u16 ele_adr, u16 ak_idx, u32 md_id, bool4 sig_
 	return SendOpParaDebug(node_adr, 0, MODE_APP_BIND, (u8 *)&set, len);
 }
 
+int cfg_cmd_subnet_bridge_get(u16 dst_addr)
+{
+	return SendOpParaDebug(dst_addr, 0, SUBNET_BRIDGE_GET, 0, 0);	
+}
+
+int cfg_cmd_subnet_bridge_set(u16 dst_addr, u8 en)
+{
+	return SendOpParaDebug(dst_addr, 0, SUBNET_BRIDGE_SET, &en, 1);
+}
+
+int cfg_cmd_bridge_table_get(u16 dst_addr, u16 key_idx1, u16 key_idx2, u16 start_idx)
+{
+	bridging_tbl_get_t tbl_get;
+	tbl_get.netkey_index1 = key_idx1;
+	tbl_get.netkey_index2 = key_idx2;
+	tbl_get.start_index = start_idx;
+	return SendOpParaDebug(dst_addr, 0, BRIDGING_TABLE_GET, (u8 *)&tbl_get, sizeof(tbl_get));
+}
+
+int cfg_cmd_bridge_table_add(u16 dst_addr, u8 direction, u16 key_idx1, u16 key_idx2, u16 addr1, u16 addr2)
+{
+	mesh_bridge_entry_t entry;
+	entry.directions = direction;
+	entry.netkey_index1 = key_idx1;
+	entry.netkey_index2 = key_idx2;
+	entry.addr1 = addr1;
+	entry.addr2 = addr2;
+	
+	return SendOpParaDebug(dst_addr, 0, BRIDGING_TABLE_ADD, (u8 *)&entry, sizeof(entry));
+}
+
+
+int cfg_cmd_bridge_table_remove(u16 dst_addr, u16 key_idx1, u16 key_idx2, u16 addr1, u16 addr2)
+{
+	bridging_tbl_remove_t tbl_remove;
+	tbl_remove.netkey_index1 = key_idx1;
+	tbl_remove.netkey_index2 = key_idx2;
+	tbl_remove.addr1 = addr1;
+	tbl_remove.addr2 = addr2;
+	
+	return SendOpParaDebug(dst_addr, 0, BRIDGING_TABLE_REMOVE, (u8 *)&tbl_remove, sizeof(tbl_remove));
+}
+
+int cfg_cmd_bridge_subnet_get(u16 dst_addr, u8 filter, u16 netkey_idx, u16 start_idx)
+{
+	bridged_subnets_get_t subnet_get;
+	subnet_get.filter = filter;
+	subnet_get.netkey_index = netkey_idx;
+	subnet_get.start_index = start_idx;	
+	
+	return SendOpParaDebug(dst_addr, 0, BRIDGED_SUBNETS_GET, (u8 *)&subnet_get, sizeof(subnet_get));
+}
+
+int cfg_cmd_bridge_tbl_size_get(u16 dst_addr)
+{	
+	return SendOpParaDebug(dst_addr, 0, BRIDGE_CAPABILITY_GET, 0, 0);
+}
+
+int cfg_cmd_on_demand_private_proxy_get(u16 dst_addr)
+{
+	return SendOpParaDebug(dst_addr, 0, CFG_ON_DEMAND_PROXY_GET, 0, 0);
+}
+
+int cfg_cmd_on_demand_private_proxy_set(u16 dst_addr, u8 en)
+{
+	return SendOpParaDebug(dst_addr, 0, CFG_ON_DEMAND_PROXY_SET, &en, 1);
+}
+
+int cfg_cmd_sar_transmitter_get(u16 dst_addr)
+{
+	return SendOpParaDebug(dst_addr, 0, CFG_SAR_TRANSMITTER_GET, 0, 0);
+}
+
+int cfg_cmd_sar_transmitter_set(u16 dst_addr, u8 seg_invl_step, u8 unicast_retran_cnt, u8 unicast_retran_cnt_noack, u8 unicast_retran_invl_step, u8 unicast_retran_invl_inc, u8 multicast_retran_cnt, u8 multicast_retran_invl)
+{
+	sar_transmitter_t sar;
+	sar.sar_seg_invl_step = seg_invl_step;
+	sar.sar_uni_retrans_cnt = unicast_retran_cnt;
+	sar.sar_uni_retrans_cnt_no_ack = unicast_retran_cnt_noack;
+	sar.sar_uni_retrans_invl_step = unicast_retran_invl_step;
+	sar.sar_uni_retrans_invl_incre = unicast_retran_invl_inc;
+	sar.sar_multi_retrans_cnt = multicast_retran_cnt;
+	sar.sar_multi_retrans_invl = multicast_retran_invl;
+	return SendOpParaDebug(dst_addr, 0, CFG_SAR_TRANSMITTER_SET, (u8 *)&sar, sizeof(sar));
+}
+
+int cfg_cmd_sar_receiver_get(u16 dst_addr)
+{
+	return SendOpParaDebug(dst_addr, 0, CFG_SAR_RECEIVER_GET, 0, 0);
+}
+
+int cfg_cmd_sar_receiver_set(u16 dst_addr, u8 seg_threshold, u8 ack_delay_inc, u8 discard_timeout, u8 rcv_seg_invl_step, u8 ack_retrans_cnt)
+{
+	sar_receiver_t sar;
+	sar.sar_seg_thres = seg_threshold;
+	sar.sar_ack_delay_inc = ack_delay_inc;
+	sar.sar_discard_timeout = discard_timeout;
+	sar.sar_rcv_seg_invl_step = rcv_seg_invl_step;
+	sar.sar_ack_retrans_cnt = ack_retrans_cnt;
+	return SendOpParaDebug(dst_addr, 0, CFG_SAR_RECEIVER_SET, (u8 *)&sar, sizeof(sar));
+}
+
+int cfg_cmd_soli_pdu_rpl_clear(u16 dst_addr, u16 start_addr, u8 range_len, int ack)
+{
+	addr_range_t addr;
+	addr.length_present_l = 0;
+	addr.range_start_l = start_addr;
+	if(range_len > 1){
+		addr.range_start_l = start_addr;
+		addr.length_present_l = 1;
+		addr.range_length = range_len;
+	}
+	return  SendOpParaDebug(dst_addr, 0, ack?SOLI_PDU_RPL_ITEM_CLEAR:SOLI_PDU_RPL_ITEM_CLEAR_NACK, (u8 *)&addr, addr.length_present_l?3:2);
+}
+
+int cfg_cmd_op_agg_sequence(u16 dst_addr, u8 *para, int len)
+{
+	return SendOpParaDebug(dst_addr, 0, CFG_OP_AGG_SEQ, para, len);
+}
+
+int cfg_cmd_heartbeat_pub_set(u16 dst_addr, u16 pub_addr, u8 count_log, u8 period_log, u8 ttl, u16 features, u16 netkey_index)
+{
+	mesh_cfg_model_heartbeat_pub_set_t heartbeat_pub;
+	heartbeat_pub.dst = pub_addr;
+	heartbeat_pub.count_log = count_log;
+	heartbeat_pub.period_log = period_log;
+	heartbeat_pub.ttl = ttl;
+	heartbeat_pub.features = features;
+	heartbeat_pub.netkeyindex = netkey_index;
+	return SendOpParaDebug(dst_addr, 1, HEARTBEAT_PUB_SET, (u8 *)&heartbeat_pub, sizeof(heartbeat_pub));
+}
 //------------------
 int mesh_proxy_set_filter_cmd(u8 opcode,u8 filter_type, u8* dat,u8 len )
 {
@@ -426,12 +589,12 @@ int mesh_directed_proxy_control_set(u8 use_directed, u16 range_start, u8 range_l
 	directed_proxy_ctl_t proxy_ctl;
 	memset(&proxy_ctl, 0x00, sizeof(proxy_ctl));
 	proxy_ctl.use_directed = use_directed;
-	proxy_ctl.addr_range.range_start = range_start;
+	proxy_ctl.addr_range.range_start_b = range_start;
 	if(range_len > 1){
-		proxy_ctl.addr_range.length_present = 1;
+		proxy_ctl.addr_range.length_present_b = 1;
 		proxy_ctl.addr_range.range_length = range_len;
 	}
-	u8 par_len = OFFSETOF(directed_proxy_ctl_t, addr_range) + (proxy_ctl.addr_range.length_present?3:2);
+	u8 par_len = OFFSETOF(directed_proxy_ctl_t, addr_range) + (proxy_ctl.addr_range.length_present_b?3:2);
 	#if WIN32
 	LOG_MSG_INFO(TL_LOG_NODE_BASIC,(u8 *)&proxy_ctl,par_len ,"mesh_directed_proxy_control_set",0);
 	#endif
@@ -446,9 +609,44 @@ int mesh_proxy_set_filter_init(u16 self_adr)
 	#endif
 	
 	mesh_proxy_set_filter_type(FILTER_WHITE_LIST);
+	#if 1
+	// because no enough notify buffer for LPN to report filter status in some cases when LPN is in extend adv mode.
+	// LPN have only 5 buffer, and kma dongle has no DLE function, so it need 6 buffers to respon filter status.
+	u16 addr_little[2] = {0};
+	addr_little[0] = self_adr;
+	addr_little[1] = 0xffff;
+	return mesh_proxy_set_filter_cmd(PROXY_FILTER_ADD_ADR,0,(u8 *)addr_little,sizeof(addr_little));
+	#else
 	mesh_proxy_filter_add_adr(self_adr);
 	return mesh_proxy_filter_add_adr(0xffff);
+	#endif
 }
+
+#if (MD_SOLI_PDU_RPL_EN&&MD_CLIENT_EN)
+int mesh_send_proxy_solicitation_pdu(u16 adr_dst)
+{
+	mesh_cmd_bear_t cmd_bear;
+	mesh_cmd_nw_t *p_nw = &cmd_bear.nw;
+	p_nw->ivi = 0;
+	p_nw->ctl = 1;
+	p_nw->ttl = 0;
+	p_nw->src = ele_adr_primary;
+	p_nw->dst = adr_dst;
+	memcpy(p_nw->sno, &soli_sno_tx, sizeof(p_nw->sno));
+	soli_sno_tx++;
+	mesh_sec_msg_enc_nw((u8 *)p_nw, 0, SWAP_TYPE_LT_UNSEG, MASTER, 0, 0, MESH_ADV_TYPE_MESSAGE, NONCE_TYPE_SOLICITATION, 0, 0);
+	soli_service_data.id_type = SOLI_WITH_RPL_TYPE;
+	memcpy(soli_service_data.id_para, p_nw, sizeof(soli_service_data.id_para));
+	soli_pdu_adv_cnt = SOLICI_PDU_CNT;
+	return 1;
+}
+#endif
+
+int cfg_cmd_send_path_solicitation(u16 netkey_offset, u16 *addr_list, int num)
+{
+	return mesh_tx_cmd_layer_upper_ctl_primary_specified_key(CMD_CTL_PATH_REQUEST_SOLICITATION, (u8 *)addr_list, num<<1, ADR_ALL_DIRECTED_FORWARD, netkey_offset);
+}
+
 #if WIN32
 // json data file ,to get data interface part  
 // provision end callback ,can call this interface to get data 

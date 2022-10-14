@@ -1,108 +1,29 @@
 /********************************************************************************************************
- * @file	utility.c
+ * @file     utility.c
  *
- * @brief	for TLSR chips
+ * @brief    This is the source file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-#include "../tl_common.h"
-#include "../drivers.h"
+
+#include "tl_common.h"
+#include "drivers.h"
 #include "utility.h"
-
-
-
-
-
-/****************************************************************************
- * @fn          addrExtCmp
- *
- * @brief       Compare two extended addresses.
- *
- * input parameters
- *
- * @param       pAddr1        - Pointer to first address.
- * @param       pAddr2        - Pointer to second address.
- *
- * output parameters
- *
- * @return      TRUE if addresses are equal, FALSE otherwise
- */
-u8 addrExtCmp(const u8 * pAddr1, const u8 * pAddr2)
-{
-  u8 i;
-
-  for (i = 8; i != 0; i--)
-  {
-    if (*pAddr1++ != *pAddr2++)
-    {
-      return FALSE;
-    }
-  }
-  return TRUE;
-}
-
-
-
-void freeTimerEvent(void **arg)
-{
-    if ( *arg != NULL ) {
-#if (__DEBUG_BUFM__)
-		if ( SUCCESS != ev_buf_free((u8*)*arg) ) {
-			while(1);
-		}
-#else
-		ev_buf_free((u8*)*arg);
-#endif
-        *arg = NULL;
-    }
-}
-
-void freeTimerTask(void **arg)
-{
-    if ( *arg == NULL ) {
-        return;
-    }
-//    EV_SCHEDULE_HIGH_TASK((ev_task_callback_t)freeTimerEvent, (void*)arg);
-}
-
 
 
 // general swap/endianess utils
@@ -125,6 +46,12 @@ void swapX(const u8 *src, u8 *dst, int len)
         dst[len - 1 - i] = src[i];
 }
 
+void swap16(u8 dst[2], const u8 src[2])
+{
+    swapX(src, dst, 2);
+}
+
+
 void swap24(u8 dst[3], const u8 src[3])
 {
     swapX(src, dst, 3);
@@ -135,7 +62,7 @@ void swap32(u8 dst[4], const u8 src[4])
     swapX(src, dst, 4);
 }
 
-void swap48(u8 dst[7], const u8 src[7])
+void swap48(u8 dst[6], const u8 src[6])
 {
     swapX(src, dst, 6);
 }
@@ -155,11 +82,6 @@ void swap128(u8 dst[16], const u8 src[16])
     swapX(src, dst, 16);
 }
 
-void net_store_16(u8 *buffer, u16 pos, u16 value)
-{
-    buffer[pos++] = value >> 8;
-    buffer[pos++] = value;
-}
 
 
 void flip_addr(u8 *dest, u8 *src){
@@ -169,11 +91,6 @@ void flip_addr(u8 *dest, u8 *src){
     dest[3] = src[2];
     dest[4] = src[1];
     dest[5] = src[0];
-}
-
-void store_16(u8 *buffer, u16 pos, u16 value){
-    buffer[pos++] = value;
-    buffer[pos++] = value >> 8;
 }
 
 
@@ -196,12 +113,21 @@ u8* my_fifo_wptr (my_fifo_t *f)
 	return 0;
 }
 
+u8* my_fifo_wptr_v2 (my_fifo_t *f)
+{
+	if (((f->wptr - f->rptr) & 255) < f->num - 3) //keep 3 fifo left for others evt
+	{
+		return f->p + (f->wptr & (f->num-1)) * f->size;
+	}
+	return 0;
+}
+
 void my_fifo_next (my_fifo_t *f)
 {
 	f->wptr++;
 }
 
-int my_fifo_push (my_fifo_t *f, u8 *p, u16 n, u8 *head, u8 head_len)
+int my_fifo_push (my_fifo_t *f, u8 *p, u16 n, u8 *head, u8 head_len) // BLE_SRC_TELINK_MESH_EN
 {
 	if (((f->wptr - f->rptr) & 255) >= f->num)
 	{
@@ -233,12 +159,16 @@ void my_fifo_pop (my_fifo_t *f)
 
 u8 * my_fifo_get (my_fifo_t *f)
 {
+    u8 *p = 0;
+    
+	u32 r = irq_disable();
 	if (f->rptr != f->wptr)
 	{
-		u8 *p = f->p + (f->rptr & (f->num-1)) * f->size;
-		return p;
+		p = f->p + (f->rptr & (f->num-1)) * f->size;
 	}
-	return 0;
+	irq_restore(r);
+	
+	return p;
 }
 
 u8 * my_fifo_get_offset (my_fifo_t *f, u8 offset)

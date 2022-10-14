@@ -71,7 +71,7 @@ typedef struct
                                      <ul><li>0: Use SHA-256.</li>
                                      <li>1: Use SHA-224.</li></ul> */
 }
-mbedtls_sha256_context;
+_align_type_4_ mbedtls_sha256_context;
 
 /**
  * \brief          This function initializes a SHA-256 context.

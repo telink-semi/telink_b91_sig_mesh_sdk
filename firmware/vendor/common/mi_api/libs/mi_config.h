@@ -13,18 +13,21 @@
  * And DEVELOPER_VERSION will identify developer firmware version.
  * e.g. x.y.z_d
  */
+
 #ifndef DEVELOPER_VERSION
-#define DEVELOPER_VERSION       0001
+#define DEVELOPER_VERSION           0001
 #endif
 
 #define STR_VAL(str)  #str
-#define CONCAT_VERSION(x,y,z,u) STR_VAL(x) "." STR_VAL(y) "." STR_VAL(z) "_" STR_VAL(u)
+#define CONCAT_DEVELOPER_VERSION(x) STR_VAL(x)
+#define CONCAT_LIB_VERSION(x,y,z)   STR_VAL(x) "." STR_VAL(y) "." STR_VAL(z) "_"
+#define CONCAT_VERSION(x,y,z,u)     STR_VAL(x) "." STR_VAL(y) "." STR_VAL(z) "_" STR_VAL(u)
 
 #if defined(MI_BLE_ENABLED) && (!HAVE_MSC)
 #define MIBLE_AUTH_MODE            2
-#define MIBLE_LIB_MAJOR            1
-#define MIBLE_LIB_MINOR            1
-#define MIBLE_LIB_REVISION         3
+#define MIBLE_LIB_MAJOR            2
+#define MIBLE_LIB_MINOR            0
+#define MIBLE_LIB_REVISION         0
 #elif defined(MI_BLE_ENABLED) && (HAVE_MSC)
 #define MIBLE_AUTH_MODE            1
 #define MIBLE_LIB_MAJOR            2
@@ -32,10 +35,10 @@
 #define MIBLE_LIB_REVISION         3
 #elif defined(MI_MESH_ENABLED)
 #define MIBLE_AUTH_MODE            1
-#define MIBLE_LIB_MAJOR            1
-#define MIBLE_LIB_MINOR            4
-#define MIBLE_LIB_REVISION         5
-#if (HAVE_MSC==0)
+#define MIBLE_LIB_MAJOR            2
+#define MIBLE_LIB_MINOR            0
+#define MIBLE_LIB_REVISION         3
+#if (HAVE_MSC==0) || (HAVE_MSC==0xFF)
 #define HAVE_OTP_PKI               1
 #else
 #define HAVE_OTP_PKI               0
@@ -44,8 +47,9 @@
 #error "No MI_BLE_ENABLED or MI_MESH_ENABLED is defined. Should add one of them in the preprocesser symbols."
 #endif
 
+#define MIBLE_DEVELOPER_VERSION         CONCAT_DEVELOPER_VERSION(DEVELOPER_VERSION)
+#define MIBLE_LIB_VERSION               CONCAT_LIB_VERSION(MIBLE_LIB_MAJOR, MIBLE_LIB_MINOR, MIBLE_LIB_REVISION)
 #define MIBLE_LIB_AND_DEVELOPER_VERSION CONCAT_VERSION(MIBLE_LIB_MAJOR, MIBLE_LIB_MINOR, MIBLE_LIB_REVISION, DEVELOPER_VERSION)
-
 
 /**
  * @note Product identification got from xiaomi IoT developer platform.
@@ -86,11 +90,11 @@
 #endif
 
 #ifndef OBJ_ADV_INTERVAL_MS
-#define OBJ_ADV_INTERVAL_MS    50
+#define OBJ_ADV_INTERVAL_MS    30
 #endif
 
 #ifndef OBJ_ADV_TIMEOUT_MS
-#define OBJ_ADV_TIMEOUT_MS     1500
+#define OBJ_ADV_TIMEOUT_MS     1000
 #endif
 
 
@@ -157,6 +161,13 @@
 #endif
 
 /**
+ * @note Use Mi BLE MCU OTA Protocol.
+ */
+#ifndef USE_MCU_OTA
+#define USE_MCU_OTA           1
+#endif
+
+/**
  * @note Use Mi BLE WiFi Access Protocol.
  */
 #ifndef USE_MIBLE_WAC
@@ -179,7 +190,7 @@
 #endif
 
 #ifndef MAX_ATT_MTU
-#define MAX_ATT_MTU            23
+#define MAX_ATT_MTU            247
 #endif
 
 #define MAX_ATT_PAYLOAD       (MAX_ATT_MTU-3)
@@ -195,19 +206,36 @@
 #define RXFER_VERBOSE          0
 #endif
 
+/* POTP CONFIG */
+#ifndef POTP_BASE
+#define POTP_BASE              ((uint8_t*)0x7E800UL)
+#endif
+
+#ifndef POTP_FULL_SIZE
+#define POTP_FULL_SIZE         2048
+#endif
 
 typedef struct {
-    char *   model;
+    const char *   developer_version;
+    const char *   model;
     uint16_t pid;
     uint16_t io;
     uint8_t  have_msc;
-    uint8_t  have_reset_button:1;
-    uint8_t  schd_in_mainloop :1;
-    uint8_t  reserve          :6;
+    uint8_t  have_reset_button  :1;
+    uint8_t  have_confirm_button:1;
+    uint8_t  schd_in_mainloop   :1;
+    uint8_t  reserve            :5;
     uint8_t  max_att_payload;
+    uint32_t dfu_start;
+    uint32_t dfu_size;
 } mi_config_t;
 
-extern const mi_config_t m_config;
+extern mi_config_t m_config;
+extern uint8_t *m_otp_base;
+extern uint16_t m_otp_size;
+#if defined(MI_MESH_ENABLED) && (HAVE_MSC==0XFF)
+extern uint8_t is_msc_exist;
+#endif
 
 #endif  /* __MI_CONFIG_H__ */ 
 

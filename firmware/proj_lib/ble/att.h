@@ -1,31 +1,41 @@
 /********************************************************************************************************
- * @file     att.h 
+ * @file	att.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #pragma once
-
-#include "l2cap.h"
-#if (MCU_CORE_TYPE == MCU_CORE_9518)
+#include "proj/mcu/config.h"
+#include "proj_lib/ble/blt_config.h"
+#if (MCU_CORE_TYPE == MCU_CORE_8258)
 #include "stack/ble/attr/att.h"
-#else
+#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+#include "stack/ble_8278/attr/att.h"
+#elif (MCU_CORE_TYPE == MCU_CORE_9518)
+#include "stack/ble/host/attr/att.h"
+#include "l2cap.h"
+#elif 0
+#include "l2cap.h"
+
+
 #define ATT_MTU_SIZE                        23  //L2CAP_MTU_SIZE //!< Minimum ATT MTU size
 #define ATT_MAX_ATTR_HANDLE                 0xFFFF
 #define ATT_16BIT_UUID_LEN                  2
@@ -69,21 +79,46 @@
  * @{
  */
 
+/** @defgroup ATT_PERMISSIONS_BITMAPS GAP ATT Attribute Access Permissions Bit Fields
+ * @{
+ * (See the Core_v5.0(Vol 3/Part C/10.3.1/Table 10.2) for more information)
+ */
+#define ATT_PERMISSIONS_AUTHOR				 0x10 //Attribute access(Read & Write) requires Authorization
+#define ATT_PERMISSIONS_ENCRYPT				 0x20 //Attribute access(Read & Write) requires Encryption
+#define ATT_PERMISSIONS_AUTHEN				 0x40 //Attribute access(Read & Write) requires Authentication(MITM protection)
+#define ATT_PERMISSIONS_SECURE_CONN			 0x80 //Attribute access(Read & Write) requires Secure_Connection
+#define ATT_PERMISSIONS_SECURITY			 (ATT_PERMISSIONS_AUTHOR | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN | ATT_PERMISSIONS_SECURE_CONN)
+
+//user can choose permission below
 #define ATT_PERMISSIONS_READ                 0x01 //!< Attribute is Readable
 #define ATT_PERMISSIONS_WRITE                0x02 //!< Attribute is Writable
-#define ATT_PERMISSIONS_AUTHEN_READ          0x04 //!< Read requires Authentication
-#define ATT_PERMISSIONS_AUTHEN_WRITE         0x08 //!< Write requires Authentication
-#define ATT_PERMISSIONS_AUTHOR_READ          0x10 //!< Read requires Authorization
-#define ATT_PERMISSIONS_AUTHOR_WRITE         0x20 //!< Write requires Authorization
-#define ATT_PERMISSIONS_ENCRYPT_READ         0x40 //!< Read requires Encryption
-#define ATT_PERMISSIONS_ENCRYPT_WRITE        0x80 //!< Write requires Encryption
-
-#define ATT_PERMISSIONS_RDWR	             0x03  // ATT_PERMISSIONS_READ | ATT_PERMISSIONS_WRITE
+#define ATT_PERMISSIONS_RDWR	             (ATT_PERMISSIONS_READ | ATT_PERMISSIONS_WRITE)   //!< Attribute is Readable & Writable
 
 
-#define ATT_PERMISSIONS_READ_AUTHOR			 0x11
-#define ATT_PERMISSIONS_WRITE_AUTHOR		 0x22
-#define ATT_PERMISSIONS_RDWD_AUTHOR			 0x33
+
+#define ATT_PERMISSIONS_ENCRYPT_READ         (ATT_PERMISSIONS_READ  | ATT_PERMISSIONS_ENCRYPT) 		//!< Read requires Encryption
+#define ATT_PERMISSIONS_ENCRYPT_WRITE        (ATT_PERMISSIONS_WRITE | ATT_PERMISSIONS_ENCRYPT) 		//!< Write requires Encryption
+#define ATT_PERMISSIONS_ENCRYPT_RDWR         (ATT_PERMISSIONS_RDWR  | ATT_PERMISSIONS_ENCRYPT) 		//!< Read & Write requires Encryption
+
+
+#define ATT_PERMISSIONS_AUTHEN_READ          (ATT_PERMISSIONS_READ  | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN) 		//!< Read requires Authentication
+#define ATT_PERMISSIONS_AUTHEN_WRITE         (ATT_PERMISSIONS_WRITE | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN) 		//!< Write requires Authentication
+#define ATT_PERMISSIONS_AUTHEN_RDWR          (ATT_PERMISSIONS_RDWR  | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN) 		//!< Read & Write requires Authentication
+
+
+#define ATT_PERMISSIONS_SECURE_CONN_READ	 (ATT_PERMISSIONS_READ  | ATT_PERMISSIONS_SECURE_CONN | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN)   //!< Read requires Secure_Connection
+#define ATT_PERMISSIONS_SECURE_CONN_WRITE    (ATT_PERMISSIONS_WRITE | ATT_PERMISSIONS_SECURE_CONN | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN)  //!< Write requires Secure_Connection
+#define ATT_PERMISSIONS_SECURE_CONN_RDWR	 (ATT_PERMISSIONS_RDWR  | ATT_PERMISSIONS_SECURE_CONN | ATT_PERMISSIONS_ENCRYPT | ATT_PERMISSIONS_AUTHEN)   //!< Read & Write requires Secure_Connection
+
+
+#define ATT_PERMISSIONS_AUTHOR_READ          (ATT_PERMISSIONS_READ | ATT_PERMISSIONS_AUTHOR) 		//!< Read requires Authorization
+#define ATT_PERMISSIONS_AUTHOR_WRITE         (ATT_PERMISSIONS_WRITE | ATT_PERMISSIONS_AUTHOR) 		//!< Write requires Authorization
+#define ATT_PERMISSIONS_AUTHOR_RDWR          (ATT_PERMISSIONS_RDWR | ATT_PERMISSIONS_AUTHOR) 		//!< Read & Write requires Authorization
+
+#define ATT_PERMISSIONS_READ_AUTHOR			  ATT_PERMISSIONS_AUTHOR_READ	
+#define ATT_PERMISSIONS_WRITE_AUTHOR		  ATT_PERMISSIONS_AUTHOR_WRITE
+#define ATT_PERMISSIONS_RDWD_AUTHOR			  ATT_PERMISSIONS_AUTHOR_RDWR
+
 /** @} End GAP_ATT_PERMISSIONS_BITMAPS */
 
 
@@ -450,32 +485,27 @@ typedef int (*att_mtuSizeExchange_callback_t)(u16, u16);
 typedef int (*att_handleValueConfirm_callback_t)(void);
 typedef int (*att_readwrite_callback_t)(void* p);
 
-#if(HOMEKIT_EN)
 typedef struct attribute
 {
   u16  attNum;
-  u8   perm;
-  u8   uuidLen;
-  u16  attrLen;    // 4 bytes aligned
-  u16  attrMaxLen;
-  u8* uuid;
-  u8* pAttrValue;
-  att_readwrite_callback_t w;
-  att_readwrite_callback_t r;
-} attribute_t;
+#if (HOMEKIT_EN)
+  u8   perm;  	
 #else
-typedef struct attribute
-{
-  u16  attNum;
-  u8*  p_perm;
+  u8   *p_perm;
+#endif
   u8   uuidLen;
-  u32  attrLen;    // 4 bytes aligned
+#if (HOMEKIT_EN)
+  u16  attrLen; 
+  u16  attrMaxLen;
+#else
+  u32  attrLen;    //4 bytes aligned
+#endif
   u8* uuid;
   u8* pAttrValue;
   att_readwrite_callback_t w;
   att_readwrite_callback_t r;
 } attribute_t;
-#endif
+
 
 
 
@@ -551,3 +581,6 @@ static inline void  blt_att_resetEffectiveMtuSize(u16 connHandle)
 	bltAtt.effective_MTU = ATT_MTU_SIZE;
 }
 #endif
+
+
+

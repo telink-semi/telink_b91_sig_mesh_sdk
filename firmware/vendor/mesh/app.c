@@ -3,57 +3,34 @@
  *
  * @brief	for TLSR chips
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
-#include "drivers/9518/rf.h"
-#include "drivers/9518/pm.h"
+#include "drivers.h"
+#include "proj_lib/pm.h"
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/ble/blt_config.h"
 #include "proj_lib/ble/ll/ll_whitelist.h"
 #include "proj_lib/ble/trace.h"
 #include "proj_lib/ble/ble_common.h"
-#include "drivers/9518/pwm.h"
 #include "proj_lib/ble/service/ble_ll_ota.h"
-//#include "proj/drivers/adc.h"
 #include "proj_lib/ble/blt_config.h"
 #include "proj_lib/ble/ble_smp.h"
 #include "proj_lib/mesh_crypto/mesh_crypto.h"
@@ -65,39 +42,58 @@
 #include "../common/app_proxy.h"
 #include "../common/app_health.h"
 #include "../common/vendor_model.h"
-#include "application/keyboard/keyboard.h"
+//#include "proj/drivers/keyboard.h"
 #include "app.h"
+#if __TLSR_RISCV_EN__
+#include "stack/ble/host/gap/gap.h"
+#else
 #include "stack/ble/gap/gap.h"
+#endif
 #include "proj_lib/ble/l2cap.h"
 #include "vendor/common/blt_soft_timer.h"
-#include "drivers/9518/rf_pa.h"
-#include "../common/remote_prov.h"
-#include "drivers.h"
 #include "stack/ble/ble.h"
-
-#include "vendor/common/blt_common.h"
+#include "app_buffer.h"
+//#include "proj/drivers/rf_pa.h"
+#include "../common/remote_prov.h"
 #if MI_API_ENABLE
 #include "vendor/common/mi_api/telink_sdk_mible_api.h"
 #include "vendor/common/mi_api/libs/mijia_profiles/mi_service_server.h"
+#include "vendor/common/mi_api/libs/mesh_auth/mible_mesh_auth.h"
+#include "vendor/common/mi_api/telink_sdk_mesh_api.h"
+#include "gatt_dfu/mible_dfu_main.h"
+#include "mible_log.h"
 #endif 
 #if (HCI_ACCESS==HCI_USE_UART)
 #include "proj/drivers/uart.h"
 #endif
 
-#if DEBUG_CFG_CMD_GROUP_AK_EN
-#define LL_RX_FIFO_SIZE		64
-#define LL_RX_FIFO_NUM		8
-#else
-#define LL_RX_FIFO_SIZE		64
-#define LL_RX_FIFO_NUM		16
+#if DU_ENABLE
+#include "vendor/common/user_du.h"
+#include "vendor/common/mi_api/telink_sdk_mible_api.h"
 #endif
 
-#define LL_TX_FIFO_SIZE		48
-#define LL_TX_FIFO_NUM		17  //only 9 and 17  can be used
-
-_attribute_data_retention_	u8	app_ll_rxfifo[LL_RX_FIFO_SIZE * LL_RX_FIFO_NUM] = {0};
-_attribute_data_retention_  u8	app_ll_txfifo[LL_TX_FIFO_SIZE * LL_TX_FIFO_NUM] = {0};
-
+#if 1
+// refert to "app_buffer.c/app_buffer.h"
+#else
+#define BLT_RX_FIFO_SIZE        (MESH_DLE_MODE ? DLE_RX_FIFO_SIZE : 64)
+#define BLT_TX_FIFO_SIZE        (MESH_DLE_MODE ? DLE_TX_FIFO_SIZE : 40)
+#if GATT_LPN_EN
+MYFIFO_INIT(blt_rxfifo, BLT_RX_FIFO_SIZE, 8); //adv_filter_proc() reserve (BLE_RCV_FIFO_MAX_CNT+2) buf while gatt connecting.
+MYFIFO_INIT(blt_txfifo, BLT_TX_FIFO_SIZE, 16); // set to 16, because there is no blt_notify_fifo_
+#else
+    #if DEBUG_CFG_CMD_GROUP_AK_EN
+MYFIFO_INIT(blt_rxfifo, BLT_RX_FIFO_SIZE, 128);  // some phones may not support DLE, so use the same count with no DLE.
+    #else
+MYFIFO_INIT(blt_rxfifo, BLT_RX_FIFO_SIZE, 16);  // some phones may not support DLE, so use the same count with no DLE.
+    #endif
+	#if DU_LPN_EN
+#define BLT_TX_FIFO_CNT			32// low down the rentention cost part .
+	#else
+#define BLT_TX_FIFO_CNT         (MESH_BLE_NOTIFY_FIFO_EN ? 32 : 128) // set to 128 in extend mode, because there is no blt_notify_fifo_
+	#endif
+MYFIFO_INIT(blt_txfifo, BLT_TX_FIFO_SIZE, BLT_TX_FIFO_CNT);  // some phones may not support DLE, so use the same count with no DLE.
+#endif
+#endif
 
 
 // u8		peer_type;
@@ -204,9 +200,16 @@ int app_event_handler (u32 h, u8 *p, int n)
 		{
 			event_adv_report_t *pa = (event_adv_report_t *)p;
 			#if MD_REMOTE_PROV
+				#if REMOTE_PROV_SCAN_GATT_EN
+			mesh_cmd_conn_prov_adv_cb(pa);// only for the remote gatt-provision proc part.
+				#endif
 			mesh_cmd_extend_loop_cb(pa);
 			#endif
 			if(LL_TYPE_ADV_NONCONN_IND != (pa->event_type & 0x0F)){
+				#if DU_ULTRA_PROV_EN
+				app_event_handler_ultra_prov(pa->data);
+				#endif
+				
 				return 0;
 			}
 			#if TEST_FORWARD_ADDR_FILTER_EN
@@ -223,9 +226,9 @@ int app_event_handler (u32 h, u8 *p, int n)
 			#endif
 			
 			#if DEBUG_MESH_DONGLE_IN_VC_EN
-			send_to_hci = mesh_dongle_adv_report2vc(pa->data, MESH_ADV_PAYLOAD);
+			send_to_hci = (0 == mesh_dongle_adv_report2vc(pa->data, MESH_ADV_PAYLOAD));
 			#else
-			send_to_hci = app_event_handler_adv(pa->data, MESH_BEAR_ADV, 1);
+			send_to_hci = (0 == app_event_handler_adv(pa->data, MESH_BEAR_ADV, 1));
 			#endif
 		}
 
@@ -238,7 +241,20 @@ int app_event_handler (u32 h, u8 *p, int n)
 			 	 	 	 	 	     ADV_TYPE_CONNECTABLE_UNDIRECTED, OWN_ADDRESS_PUBLIC, \
 			 	 	 	 	 	     0,  NULL,  BLT_ENABLE_ADV_ALL, ADV_FP_NONE);
 			#endif
-			
+			#if MI_API_ENABLE
+			mible_status_t status = MI_SUCCESS;
+            if (NULL == mible_conn_timer){
+                status = mible_timer_create(&mible_conn_timer, mible_conn_timeout_cb,
+                                                               MIBLE_TIMER_SINGLE_SHOT);
+            }
+			if (MI_SUCCESS != status){
+                MI_LOG_ERROR("mible_conn_timer: fail, timer is not created");
+            }else{
+        		mible_conn_handle = 1;
+                mible_timer_start(mible_conn_timer, 20*1000, NULL);
+                MI_LOG_DEBUG("mible_conn_timer: succ, timer is created");
+            }
+			#endif
 			event_connection_complete_t *pc = (event_connection_complete_t *)p;
 			if (!pc->status)							// status OK
 			{
@@ -247,6 +263,13 @@ int app_event_handler (u32 h, u8 *p, int n)
 				//peer_type = pc->peer_adr_type;
 				//memcpy (peer_mac, pc->mac, 6);
 			}
+			#if DU_LPN_EN
+	        LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"connect suc",0);	
+				#if !LPN_CONTROL_EN
+			blc_ll_setScanEnable (0, 0);
+			mi_mesh_state_set(0);
+				#endif
+			#endif
 			#if DEBUG_BLE_EVENT_ENABLE
 			rf_link_light_event_callback(LGT_CMD_BLE_CONN);
 			#endif
@@ -258,7 +281,13 @@ int app_event_handler (u32 h, u8 *p, int n)
 			#if 0 // FEATURE_FRIEND_EN
 			fn_update_RecWin(get_RecWin_connected());
 			#endif
+			#if !DU_ENABLE
 			mesh_service_change_report();
+			#endif
+			#if LPN_CONTROL_EN
+			bls_l2cap_requestConnParamUpdate (48, 56, 10, 500);
+			#endif
+			
 		}
 
 	//------------ connection update complete -------------------------------
@@ -276,10 +305,20 @@ int app_event_handler (u32 h, u8 *p, int n)
 		#if MI_SWITCH_LPN_EN
 		mi_mesh_switch_sys_mode(16000000);
 		#endif
+		#if DU_ENABLE
+		clock_init(SYS_CLK_16M_Crystal);
+		blc_ll_setScanEnable (BLS_FLAG_SCAN_ENABLE | BLS_FLAG_ADV_IN_SLAVE_MODE, 0);
+		if(p_ota->ota_suc){
+			//LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"ota reboot ,when ble is disconnct!",0);
+			du_ota_suc_reboot();			
+		}
+		#endif
 		event_disconnection_t	*pd = (event_disconnection_t *)p;
 		//app_led_en (pd->handle, 0);
 		#if MI_API_ENABLE
 		telink_ble_mi_app_event(HCI_EVT_DISCONNECTION_COMPLETE,p,n);
+		mible_conn_handle = 0xffff;
+		mible_timer_stop(mible_conn_timer);
 		#endif 
 		//terminate reason
 		if(pd->reason == HCI_ERR_CONN_TIMEOUT){
@@ -288,6 +327,12 @@ int app_event_handler (u32 h, u8 *p, int n)
 		else if(pd->reason == HCI_ERR_REMOTE_USER_TERM_CONN){  //0x13
 
 		}
+		#if 0 // TODO
+		else if(pd->reason == SLAVE_TERMINATE_CONN_ACKED || pd->reason == SLAVE_TERMINATE_CONN_TIMEOUT){
+
+		}
+		#endif
+		LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"disconnect reason is %x",pd->reason);
 		#if DEBUG_BLE_EVENT_ENABLE
 		rf_link_light_event_callback(LGT_CMD_BLE_ADV);
 		#endif 
@@ -296,7 +341,7 @@ int app_event_handler (u32 h, u8 *p, int n)
 		debug_mesh_report_BLE_st2usb(0);
 		#endif
 
-		mesh_ble_disconnect_cb();
+		mesh_ble_disconnect_cb(pd->reason);
 		#if 0 // FEATURE_FRIEND_EN
         fn_update_RecWin(FRI_REC_WIN_MS);   // restore
         #endif
@@ -310,15 +355,36 @@ int app_event_handler (u32 h, u8 *p, int n)
 	return 0;
 }
 
+#define SCAN_IO_INTERVA_DEFL_US		(40000)
+
 void proc_ui()
 {
-	static u32 tick, scan_io_interval_us = 40000;
+	static u32 tick, scan_io_interval_us = SCAN_IO_INTERVA_DEFL_US;
 	if (!clock_time_exceed (tick, scan_io_interval_us))
 	{
 		return;
 	}
 	tick = clock_time();
+	scan_io_interval_us = SCAN_IO_INTERVA_DEFL_US;
 
+	#if EXTENDED_ADV_TX_TEST_EN
+	static u32 tick2, scan_io_interval_us2 = 1000*1000;
+	if (!clock_time_exceed (tick2, scan_io_interval_us2)){
+		return;
+	}
+	tick2 = clock_time();
+	transition_par_t tran = {0};
+	static u32 B_0cnt;
+	access_cmd_onoff(0xffff, 0, B_0cnt++&1, CMD_NO_ACK, &tran);
+	return ;
+	#endif
+
+	#if AUDIO_MESH_EN
+	proc_ui_audio();
+	
+	return ;
+	#endif
+	
 	#if 0
 	static u8 st_sw1_last,st_sw2_last;	
 	u8 st_sw1 = !gpio_read(SW1_GPIO);
@@ -359,12 +425,37 @@ void proc_ui()
 	}
 	st_sw2_last = st_sw2;
 	#endif
+	
+	#if IV_UPDATE_TEST_EN
+	mesh_iv_update_test_initiate();
+	#endif
 }
 
 /////////////////////////////////////////////////////////////////////
 // main loop flow
 /////////////////////////////////////////////////////////////////////
-
+#if 0
+u8 notify_test_flag =0;
+u8 notify_test_buf[19];
+void test_sig_mesh_cmd_fun()
+{
+	if(notify_test_flag){
+		static u32 tick_notify_test_tick =0;
+		static u16 A_debug_sts_level =0;
+		int ret_tmp =-1;
+		if(!clock_time_exceed(tick_notify_test_tick,10*1000)){
+			return;
+		}	
+		tick_notify_test_tick = clock_time();
+		ret_tmp = mesh_tx_cmd_rsp(G_LEVEL_STATUS, (u8 *)&A_debug_sts_level, sizeof(A_debug_sts_level), ele_adr_primary, 
+						ele_adr_primary, 0, 0);
+		if(A_debug_notify_pkt_sts == BLE_SUCCESS && ret_tmp == 0){
+			A_debug_notify_pkt_sts = HCI_ERR_MAC_CONN_FAILED;
+			A_debug_sts_level++;
+		}
+	}
+}
+#endif
 // simu uart io printf demo 
 #if 0
 void test_simu_io_user_define_proc()
@@ -379,155 +470,41 @@ void test_simu_io_user_define_proc()
 }
 #endif
 
-
-#if SPEECH_ENABLE
-#define AUDIO_LINE_IN            0
-#define AUDIO_AMIC_IN            1
-#define AUDIO_DMIC_IN            2
-
-#define  AUDIO_IN_MODE          AUDIO_AMIC_IN
-
-#define MIC_RESOLUTION_BIT		16
-
-#define MIC_SAMPLE_RATE			16000//set sample for mic
-
-
-#define MIC_CHANNLE_COUNT		1   //1 or 2
-#define	MIC_ENOCDER_ENABLE		0
-
-
-#define SPK_CHANNLE_COUNT		2
-#define SPK_RESOLUTION_BIT		16
-
-#define MIC_SAMPLING_RATE   (MIC_SAMPLE_RATE== 8000) ?  AUDIO_8K :((MIC_SAMPLE_RATE== 16000) ?  AUDIO_16K :(  (MIC_SAMPLE_RATE== 32000) ?  AUDIO_32K :( (MIC_SAMPLE_RATE== 48000) ? AUDIO_48K : AUDIO_16K) ) )
-#define MIC_MONO_STEREO       ((MIC_CHANNLE_COUNT==1) ?  MONO_BIT_16 :STEREO_BIT_16 )
-
-#define	MIC_BUFFER_SIZE			8192//2048
-#define MIC_DMA_CHN             DMA2
-
-
-u16		iso_in_buff[MIC_BUFFER_SIZE];
-#include "pcm_fifo.h"
-FIFI_WITH_SEM kwd_fifo;
-
-
-#include "libaid_awaken.h"
-#define KWD_LEN    320
-#define KWD_SAMPLE_RATE 16000
-static short kwd_data[KWD_LEN];
-static int wakeup_times[40] = {0,0,0,0,0,0,0,0,0,0};
-
-volatile u32		iso_in_w = 0;
-volatile u32  	     iso_in_r = 0;
-u32		num_iso_in = 0;
-/**
- * @brief     This function serves to send data to USB. only adaptive mono 16bit
- * @param[in] audio_rate - audio rate. This value is matched with usb_default.h :MIC_SAMPLE_RATE.
- * @return    none.
- */
-
-
-int audio_tx_data_to_kwd_buf(unsigned int audio_rate)
+#if (GATT_LPN_EN)
+int soft_timer_send_mesh_adv()
 {
-	unsigned char length = 0;
-	iso_in_w = ((audio_get_rx_dma_wptr (MIC_DMA_CHN) - (u32)iso_in_buff) >> 1);
-	switch(audio_rate)
-	{
-		case 	8000:	length = 80;break;
-		case	16000:	length = 160;break;
-		default:		length = 320;break;
+	int ret = -1;	
+	mesh_send_adv2scan_mode(1);
+	if(my_fifo_get(&mesh_adv_cmd_fifo)){		
+		ret = get_mesh_adv_interval();
 	}
-	for (u8 i=0; i<length&& iso_in_r != iso_in_w ; i++)
-	{
-		short md = iso_in_buff[iso_in_r++ &(MIC_BUFFER_SIZE-1)];
-
-		Fifo_Write(&kwd_fifo, &md, sizeof(short));
-
-	}
-
-	return length;
-}
-void timer0_irq_handler(void)
-{
-	if(timer_get_irq_status(TMR_STA_TMR0))
-	{
-		timer_clr_irq_status(TMR_STA_TMR0);
-        audio_tx_data_to_kwd_buf(KWD_SAMPLE_RATE);
-	}
+	return ret;
 }
 
+void soft_timer_mesh_adv_proc()
+{
+	if(my_fifo_data_cnt_get(&mesh_adv_cmd_fifo)){
+		if(!is_soft_timer_exist(&soft_timer_send_mesh_adv)){
+			blt_soft_timer_update(&soft_timer_send_mesh_adv, get_mesh_adv_interval());
+		}
+	}
+}
 #endif
 
-void main_loop ()
+_attribute_no_inline_ void main_loop () // must add no inline, or it will be inline to main_() which is ramcode.
 {
 	static u32 tick_loop;
 
 	tick_loop ++;
-	
-#if SPEECH_ENABLE
-		if(Fifo_Read(&kwd_fifo, kwd_data, sizeof(short)*KWD_LEN, sizeof(short)*KWD_LEN) !=0 )
-		{
-			int ret;
-			ret = AidAwakenProcess(kwd_data,NULL,KWD_LEN);
-			 
-			/*
-			ret:
-			打开灯光				 9	  
-			关闭灯光				10	
-			打开吊灯				11    
-			关闭吊灯 				12	  
-			打开客厅灯			  	15	
-			关闭客厅灯	  			16	 
-			打开卧室灯 			 	17    
-			关闭卧室灯			   	18
-			*/
-			u8 data[4]={0x00,0x00,0x00,0x00};
-			u16 adr=0;
-			if(ret > 0)
-			{
-				if(ret == 9){
-					data[0]=1;
-					adr = 0xffff;
-				}else if(ret == 10){
-					data[0]=0;
-					adr = 0xffff;
-				}else if (ret == 11){
-					data[0]=1;
-					adr = 0xc007;
-				}else if(ret == 12){
-					data[0]=0;
-					adr = 0xc007;
-				}else if(ret == 15){
-					data[0]=1;
-					adr = 0xc000;
-				}else if(ret == 16){
-					data[0]=0;
-					adr = 0xc000;
-				}else if (ret == 17){
-					data[0]=1;
-					adr = 0xc002;
-				}else if (ret ==18){
-					data[0]=0;
-					adr = 0xc002;
-				}
-				if(adr !=0){
-					mesh_tx_cmd2normal_primary(G_ONOFF_SET,data,sizeof(data),adr,0);
-				}
-				
-				//printf("W[%d]T[%d]A[%d]\r\n", ret, ++wakeup_times[ret-1], ++wakeup_times[9]);
-			}
-			else if(ret == ERR_MAX_LIMIT)
-			{
-			}
-		}
-#endif
-
 #if (BLT_SOFTWARE_TIMER_ENABLE)
+	#if GATT_LPN_EN
+	soft_timer_mesh_adv_proc();
+	#endif
 	blt_soft_timer_process(MAINLOOP_ENTRY);
 #endif
 	mesh_loop_proc_prior(); // priority loop, especially for 8269
 //	test_simu_io_user_define_proc();
-	#if DUAL_MODE_ADAPT_EN
+	#if DUAL_MESH_ZB_BL_EN
 	if(RF_MODE_BLE != dual_mode_proc()){    // should be before is mesh latency window()
         proc_ui();
         proc_led();
@@ -535,7 +512,9 @@ void main_loop ()
 		return ;
 	}
 	#endif
-	
+	#if DUAL_MESH_SIG_PVT_EN
+	dual_mode_proc();
+	#endif
 	#if SIG_MESH_LOOP_PROC_10MS_EN
 	if(is_mesh_latency_window()){
 	    return ;
@@ -559,15 +538,37 @@ void main_loop ()
 
 	////////////////////////////////////// UI entry /////////////////////////////////
 	//  add spp UI task:
+#if (BATT_CHECK_ENABLE)
+    app_battery_power_check_and_sleep_handle(1);
+#endif
+	// du proc
+	#if DU_ENABLE
+	du_loop_proc();
+	#endif
+	#if !DU_LPN_EN
 	proc_ui();
 	proc_led();
 	factory_reset_cnt_check();
-	
+	#endif
+	#if DU_LPN_EN
+		#if LPN_CONTROL_EN
+		extern u8 save_power_mode ;
+	if(is_provision_success()||save_power_mode == 0)
+		#else
+	if(is_provision_success()||mi_mesh_get_state())
+		#endif
+	{
+		mesh_loop_process();
+	}else{
+		#if RTC_USE_32K_RC_ENABLE
+		system_time_run();
+		#endif
+	} 
+	#else
 	mesh_loop_process();
+	#endif
 	#if MI_API_ENABLE
-	telink_gatt_event_loop();
 	ev_main();
-	mi_vendor_cfg_rsp_proc();
 	#if XIAOMI_MODULE_ENABLE
 	mi_api_loop_run();
 	#endif
@@ -578,7 +579,11 @@ void main_loop ()
 	static u32 adc_check_time;
     if(clock_time_exceed(adc_check_time, 1000*1000)){
         adc_check_time = clock_time();
-		static u16 T_adc_val;
+		volatile static u16 T_adc_val;
+		
+		#if (BATT_CHECK_ENABLE)
+		app_battery_check_and_re_init_user_adc();
+		#endif
 		#if(MCU_CORE_TYPE == MCU_CORE_8269)     
         T_adc_val = adc_BatteryValueGet();
 		#else
@@ -591,9 +596,18 @@ void main_loop ()
 	#if DEBUG_IV_UPDATE_TEST_EN
 	iv_index_test_button_firmware();
 	#endif
-	#if MI_SWITCH_LPN_EN
+	#if (MI_SWITCH_LPN_EN||DU_LPN_EN)
 	mi_mesh_lowpower_loop();
 	#endif	
+	#if MESH_MONITOR_EN
+    if(is_provision_success() && node_binding_tick && clock_time_exceed(node_binding_tick, 3*1000*1000)){
+		monitor_mode_en = 1;
+    }
+	#endif
+
+#if __TLSR_RISCV_EN__
+	main_loop_risv_sdk();	// at last should be better.
+#endif
 }
 
 #if IRQ_TIMER1_ENABLE
@@ -627,54 +641,12 @@ void test_ecdsa_sig_verify2()
 #endif
 
 
-void user_init()
+_attribute_no_inline_ void user_init() // must add no inline, or it will be inline to main_() which is ramcode.
 {
-	
-#if SPEECH_ENABLE
-	audio_set_codec_supply();
-	//delay_ms(1000);
-	AidAwakenInit(NULL,KWD_SAMPLE_RATE,false);
-	//delay_ms(1000);
-	Fifo_Init(&kwd_fifo, 8192);
-	
-#if(AUDIO_IN_MODE==AUDIO_LINE_IN)
-	audio_init(LINE_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
-	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
-#elif(AUDIO_IN_MODE==AUDIO_DMIC_IN)
-	audio_set_codec_in_path_a_d_gain(CODEC_IN_D_GAIN_16_DB,CODEC_IN_A_GAIN_8_DB);
-	audio_set_dmic_pin(DMIC_GROUPB_B2_DAT_B3_B4_CLK);
-	audio_init(DMIC_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
-	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
-#elif(AUDIO_IN_MODE==AUDIO_AMIC_IN)
-	audio_init(AMIC_IN_ONLY ,MIC_SAMPLING_RATE,MIC_MONO_STEREO);
-	audio_rx_dma_chain_init(DMA2,(u16*)&iso_in_buff,MIC_BUFFER_SIZE*2);
-#endif
-
-	plic_interrupt_enable(IRQ4_TIMER0);
-	timer_set_mode(TIMER0, TIMER_MODE_SYSCLK, 0, 10*sys_clk.pclk*1000);
-	timer_start(TIMER0);
-	core_interrupt_enable();
-#endif
-
-//random number generator must be initiated here( in the beginning of user_init_nromal)
-	//when deepSleep retention wakeUp, no need initialize again
-	random_generator_init();  //this is must
-		/*****************************************************************************************
-	 Note: battery check must do before any flash write/erase operation, cause flash write/erase
-		   under a low or unstable power supply will lead to error flash operation
-
-		   Some module initialization may involve flash write/erase, include: OTA initialization,
-				SMP initialization, ..
-				So these initialization must be done after  battery check
-	*****************************************************************************************/
-	#if (BATT_CHECK_ENABLE)  //battery check must do before OTA relative operation
-		if(analog_read_reg8(USED_DEEP_ANA_REG) & LOW_BATT_FLG){
-			app_battery_power_check(VBAT_ALRAM_THRES_MV + 200);  //2.2 V
-		}
-		else{
-			app_battery_power_check(VBAT_ALRAM_THRES_MV);  //2.0 V
-		}
-	#endif
+    #if (BATT_CHECK_ENABLE)
+    app_battery_power_check_and_sleep_handle(0); //battery check must do before OTA relative operation
+    #endif
+    
 	#if DEBUG_EVB_EN
 	    set_sha256_init_para_mode(1);	// must 1
 	#else
@@ -684,18 +656,46 @@ void user_init()
     #if (DUAL_MODE_WITH_TLK_MESH_EN)
 	dual_mode_en_init();    // must before proc_telink_mesh_to_sig_mesh_, because "dual_mode_state" is used in it.
     #endif
+	#if (0 == __TLSR_RISCV_EN__) // TODO
 	proc_telink_mesh_to_sig_mesh();		// must at first
-	//set_blc_hci_flag_fun(0);// disable the hci part of for the lib .
+	set_blc_hci_flag_fun(0);// disable the hci part of for the lib .
+	#endif
 	#if (DUAL_MODE_ADAPT_EN)
 	dual_mode_en_init();    // must before factory_reset_handle, because "dual_mode_state" is used in it.
 	#endif
-	
+
+	#if (0 == __TLSR_RISCV_EN__) // B91 called in main_()
 	blc_app_loadCustomizedParameters();  //load customized freq_offset cap value and tp value
+	#endif
 
+	#if (0 == __TLSR_RISCV_EN__) // TODO
 	usb_id_init();
-	//usb_log_init();
+	usb_log_init();
+	#endif
+	#if TESTCASE_FLAG_ENABLE
+		// need to have a simulate insert
+	usb_dp_pullup_en (0);  //open USB enum
+	gpio_set_func(GPIO_DP,AS_GPIO);
+	gpio_set_output_en(GPIO_DP,1);
+	gpio_write(GPIO_DP,0);
+	sleep_us(20000);
+	gpio_set_func(GPIO_DP,AS_USB);
 	usb_dp_pullup_en (1);  //open USB enum
+	#endif
+	#if (__TLSR_RISCV_EN__ && DUMP_STR_EN)
+	myudb_usb_init (0x120,&usb_log_txfifo);		//0x120: usb sub-id
+	usb_set_pin_en ();
+	#endif
+	usb_dp_pullup_en (1);  //open USB enum
+	#if 0
+	// use to create the certify part .
+	static u32 A_debug_simu =0x55;
+	irq_disable();
+	A_debug_simu = mi_mesh_otp_program_simulation();
+	while(1);
+	#else
 
+	#endif
 	////////////////// BLE stack initialization ////////////////////////////////////
 #if (DUAL_VENDOR_EN)
 	mesh_common_retrieve(FLASH_ADR_PROVISION_CFG_S);
@@ -708,31 +708,46 @@ void user_init()
 	//bls_ll_init (tbl_mac);
 #if(MCU_CORE_TYPE == MCU_CORE_8269)
 	blc_ll_initBasicMCU(tbl_mac);   //mandatory
-#elif((MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278))
+#elif((MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278) || (MCU_CORE_TYPE == MCU_CORE_9518))
 	blc_ll_initBasicMCU();                      //mandatory
 	blc_ll_initStandby_module(tbl_mac);				//mandatory
-#elif(MCU_CORE_TYPE == MCU_CORE_9518)
-	////// Controller Initialization  //////////
-	blc_ll_initBasicMCU();                      //mandatory
-	blc_ll_initStandby_module(tbl_mac);				//mandatory
-	blc_ll_initAdvertising_module(); 	//adv module: 		 mandatory for BLE slave,
-	blc_ll_initConnection_module();				//connection module  mandatory for BLE slave/master
-	blc_ll_initSlaveRole_module();				//slave module: 	 mandatory for BLE slave,
 #endif
+#if (EXTENDED_ADV_ENABLE)
+    mesh_blc_ll_initExtendedAdv();
+#endif
+#if __TLSR_RISCV_EN__
 	blc_ll_initAdvertising_module(); 	//adv module: 		 mandatory for BLE slave,
+#else
+	blc_ll_initAdvertising_module(tbl_mac); 	//adv module: 		 mandatory for BLE slave,
+#endif
 	blc_ll_initSlaveRole_module();				//slave module: 	 mandatory for BLE slave,
-	// init tx and rx init
-	blc_ll_initTxFifo(app_ll_txfifo, LL_TX_FIFO_SIZE, LL_TX_FIFO_NUM);
-	blc_ll_initRxFifo(app_ll_rxfifo, LL_RX_FIFO_SIZE, LL_RX_FIFO_NUM);
+
+
+#if (__TLSR_RISCV_EN__) 
+	blc_ll_setAclConnMaxOctetsNumber(ACL_CONN_MAX_RX_OCTETS, ACL_CONN_MAX_TX_OCTETS);
+
+	blc_ll_initAclConnTxFifo(app_acl_txfifo, ACL_TX_FIFO_SIZE, ACL_TX_FIFO_NUM);
+	blc_ll_initAclConnRxFifo(app_acl_rxfifo, ACL_RX_FIFO_SIZE, ACL_RX_FIFO_NUM);
+
+	u8 check_status = blc_controller_check_appBufferInitialization();
+	if(check_status != BLE_SUCCESS){
+		/* here user should set some log to know which application buffer incorrect */
+		write_log32(0x88880000 | check_status);
+		while(1);
+	}
+#endif
+	//////////// Controller Initialization  End /////////////////////////
+
 #if (BLE_REMOTE_PM_ENABLE)
 	blc_ll_initPowerManagement_module();        //pm module:      	 optional
-	#if MI_SWITCH_LPN_EN
+	#if (MI_SWITCH_LPN_EN||DU_LPN_EN)
 	bls_pm_setSuspendMask (SUSPEND_DISABLE);
 	#else
 	bls_pm_setSuspendMask (SUSPEND_ADV | DEEPSLEEP_RETENTION_ADV | SUSPEND_CONN | DEEPSLEEP_RETENTION_CONN);
 	#endif
 	blc_pm_setDeepsleepRetentionThreshold(50, 30);
 	blc_pm_setDeepsleepRetentionEarlyWakeupTiming(400);
+	bls_pm_registerFuncBeforeSuspend(app_func_before_suspend);
 #else
 	bls_pm_setSuspendMask (SUSPEND_DISABLE);//(SUSPEND_ADV | SUSPEND_CONN)
 #endif
@@ -740,17 +755,25 @@ void user_init()
 	//l2cap initialization
 	//blc_l2cap_register_handler (blc_l2cap_packet_receive);
 	blc_l2cap_register_handler (app_l2cap_packet_receive); // define the l2cap part 
+	blc_smp_setSecurityLevel(No_Security);
 	///////////////////// USER application initialization ///////////////////
 
+#if EXTENDED_ADV_ENABLE
+	/*u8 status = */mesh_blc_ll_setExtAdvParamAndEnable();
+#endif
 	u8 status = bls_ll_setAdvParam( ADV_INTERVAL_MIN, ADV_INTERVAL_MAX, \
 			 	 	 	 	 	     ADV_TYPE_CONNECTABLE_UNDIRECTED, OWN_ADDRESS_PUBLIC, \
 			 	 	 	 	 	     0,  NULL,  BLT_ENABLE_ADV_ALL, ADV_FP_NONE);
-
+#if ACTIVE_SCAN_ENABLE
+	memcpy(pkt_scan_req.scanA,tbl_mac,6);
+#endif
 #if (DUAL_VENDOR_EN)
     status = status;    // it will be optimized
 #else
 	if(status != BLE_SUCCESS){  //adv setting err
+		#if (0 == __TLSR_RISCV_EN__)
 		write_reg8(0x8000, 0x11);  //debug
+		#endif
 		while(1);
 	}
 #endif
@@ -779,7 +802,7 @@ void user_init()
 	#endif
 #endif
 	#if ADC_ENABLE
-	adc_drv_init();
+	adc_drv_init();	// still init even though BATT_CHECK_ENABLE is enable, beause battery check may not be called in user init.
 	#endif
 	rf_pa_init();
 	bls_app_registerEventCallback (BLT_EV_FLAG_CONNECT, (blt_event_callback_t)&mesh_ble_connect_cb);
@@ -788,8 +811,22 @@ void user_init()
 	bls_set_advertise_prepare (app_advertise_prepare_handler);
 	//bls_set_update_chn_cb(chn_conn_update_dispatch);
 	
+
+#if __TLSR_RISCV_EN__
+	#if (BLE_OTA_ENABLE)
+	////////////////// OTA relative ////////////////////////
+	/* OTA module initialization must be called after "blc_ota_setNewFirmwwareStorageAddress"(if used), and before any other OTA API.*/
+	blc_ota_initOtaServer_module();
+
+	blc_ota_setOtaProcessTimeout(OTA_CMD_INTER_TIMEOUT_S);	//OTA process timeout:	30 seconds
+	blc_ota_setOtaDataPacketTimeout(4); //OTA data packet timeout:	4 seconds
+	blc_ota_registerOtaStartCmdCb(entry_ota_mode);
+	blc_ota_registerOtaResultIndicationCb(show_ota_result);
+	#endif
+#else
 	bls_ota_registerStartCmdCb(entry_ota_mode);
 	bls_ota_registerResultIndicateCb(show_ota_result);
+#endif
 	#if !GATT_LPN_EN
 	app_enable_scan_all_device ();	// enable scan adv packet 
 	#endif
@@ -802,19 +839,22 @@ void user_init()
 	#endif	
 	{
 		#if MI_API_ENABLE
-			#define RECORD_DFU_INFO   5
+			//fix the mi ota ,when uncomplete ,it need to goon after power on 
 			u32 adr_record;
 			if(!find_record_adr(RECORD_DFU_INFO,&adr_record)){
-				bls_ota_clearNewFwDataArea();
+				bls_ota_clearNewFwDataArea(0);
 				telink_record_clean_cpy();// trigger clean recycle ,and it will not need to clean in the conn state
 			}
 		#else
-		bls_ota_clearNewFwDataArea();	 //must
+		bls_ota_clearNewFwDataArea(0);	 //must
 		#endif
 	}
-	//blc_ll_initScanning_module(tbl_mac);
+	#if (MCU_CORE_TYPE == MCU_CORE_9518)
+	// use original scan flow.
+	blc_ll_initScanning_module_mesh();//blc_ll_initScanning_module(tbl_mac);
+	#endif
 	//gatt initialization
-	#if((MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278)||(MCU_CORE_TYPE == MCU_CORE_9518))
+	#if((MCU_CORE_TYPE == MCU_CORE_8258) || (MCU_CORE_TYPE == MCU_CORE_8278) || (MCU_CORE_TYPE == MCU_CORE_9518))
 	blc_gap_peripheral_init();    //gap initialization
 	#endif	
 	
@@ -822,6 +862,8 @@ void user_init()
 	my_att_init (provision_mag.gatt_mode);
 	blc_att_setServerDataPendingTime_upon_ClientCmd(10);
 #if MI_API_ENABLE
+	mem_pool_init();
+
     #if DUAL_VENDOR_EN
     if(DUAL_VENDOR_ST_ALI != provision_mag.dual_vendor_st) // mac have been set to ali mode before.
     #endif
@@ -831,23 +873,19 @@ void user_init()
 	//mi_mesh_otp_program_simulation();
 	blc_att_setServerDataPendingTime_upon_ClientCmd(1);
 	telink_record_part_init();
-	#if 0 // XIAOMI_MODULE_ENABLE
-	test_mi_api_part(); // just for test
-	#endif
-	#if MI_SWITCH_LPN_EN
+	#if (MI_SWITCH_LPN_EN||DU_LPN_EN) // use 16M will save power
 	mi_mesh_switch_sys_mode(16000000);
 	mi_mesh_sleep_init();
 	#endif
+	
+	#if !DU_ENABLE
 	blc_l2cap_register_pre_handler(telink_ble_mi_event_cb_att);// for telink event callback
-	advertise_init();
+	#endif
 	mi_service_init();
 	telink_mi_vendor_init();
-	//cfg_led_event(LED_EVENT_FLASH_4HZ_3T);
-	//cfg_led_event(LED_EVENT_FLASH_1HZ_3S);
 	}
 #endif 
-	extern u32 system_time_tick;
-	system_time_tick = clock_time();
+	system_time_init();
 #if TESTCASE_FLAG_ENABLE
 	memset(&model_sig_cfg_s.hb_sub, 0x00, sizeof(mesh_heartbeat_sub_str)); // init para for test
 #endif
@@ -861,48 +899,67 @@ void user_init()
 	blt_soft_timer_init();
 	//blt_soft_timer_add(&soft_timer_test0, 200*1000);
 #endif
+
+#if DU_ENABLE
+	du_ui_proc_init();
+#endif
+
 #if DEBUG_CFG_CMD_GROUP_AK_EN
 	if(blt_rxfifo.num >64){
 		blt_rxfifo.num = 64;
 	}
 #endif
+#if MESH_MONITOR_EN
+	monitor_mode_en = is_provision_success();
+#endif
+
+#if __TLSR_RISCV_EN__
+	user_init_risv_sdk();	// at last should be better.
+#endif
 
     CB_USER_INIT();
-
-
 }
 
 #if (PM_DEEPSLEEP_RETENTION_ENABLE)
 _attribute_ram_code_ void user_init_deepRetn(void)
 {
+	#if (0 == __TLSR_RISCV_EN__) // B91 called in main_()
     blc_app_loadCustomizedParameters();
+    #endif
 	blc_ll_initBasicMCU();   //mandatory
 	rf_set_power_level_index (my_rf_power_index);
-#if MI_SWITCH_LPN_EN
+	blc_ll_recoverDeepRetention();
+
+	DBG_CHN0_HIGH;    //debug
+    // should enable IRQ here, because it may use irq here, for example BLE connect which need start IRQ quickly.
+    irq_enable();
+	#if (MI_SWITCH_LPN_EN||DU_LPN_EN)
+	LOG_MSG_INFO(TL_LOG_NODE_SDK,0,0,"deep init %x",clock_time()/16000);
 		if(bltPm.appWakeup_flg){ // it may have the rate not response by the event tick part ,so we should use the distance
 			if(mi_mesh_sleep_time_exceed_adv_iner()){
 				mi_mesh_sleep_init();
 				bls_pm_setSuspendMask (SUSPEND_DISABLE);
 			}
 		}else{// if it is wakeup by the adv event tick part ,we need to refresh the adv tick part
+			#if DU_LPN_EN //because the mesh disable the random part ,so it should set every time 
+			u32 adv_inter =ADV_INTERVAL_MIN +(rand())%(ADV_INTERVAL_MAX-ADV_INTERVAL_MIN); 	
+			bls_ll_setAdvInterval(adv_inter,adv_inter);
+			#endif
 			mi_mesh_sleep_init();
 			bls_pm_setSuspendMask (SUSPEND_DISABLE);
 		}
-#endif
+	#endif
+	#if DU_ENABLE
+	du_ui_proc_init_deep();
+	#endif
+//    light_pwm_init();   // cost about 1.5ms
 
-	blc_ll_recoverDeepRetention();
-
-	DBG_CHN0_HIGH;    //debug
-	
-    light_pwm_init();
 #if (HCI_ACCESS == HCI_USE_UART)	//uart
 	uart_drv_init();
 #endif
 #if ADC_ENABLE
 	adc_drv_init();
 #endif
-    // should enable IRQ here, because it may use irq here, for example BLE connect.
-    // irq_enable();
 }
 #endif
 

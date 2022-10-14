@@ -1,66 +1,97 @@
 /********************************************************************************************************
- * @file	user_config.h
+ * @file     user_config.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
+
 #pragma once
 
-#if (__PROJECT_B91_BLE_REMOTE__)
-	#include "../B91_ble_remote/app_config.h"
-#elif (__PROJECT_B91_BLE_SAMPLE__)
-	#include "../B91_ble_sample/app_config.h"
-#elif (__PROJECT_B91_MODULE__ )
-	#include "../mesh/app_config.h"
-#elif (__PROJECT_B91_HCI__)
-	#include "../B91_hci/app_config.h"
-#elif (__PROJECT_B91_FEATURE_TEST__)
-	#include "../B91_feature_test/app_config.h"
-#elif(__PROJECT_B91_MASTER_KMA_DONGLE__)
-	#include "../B91_master_kma_dongle/app_config.h"
-#elif(__PROJECT_B91_INTERNAL_TEST__)
-	#include "../B91_internal_test/app_config.h"
-#elif(__PROJECT_B91_DEBUG_DEMO__)
-	#include "../B91_debug_demo/app_config.h"
+#if ANDROID_APP_ENABLE || IOS_APP_ENABLE 
+#pragma pack(1)
+#endif
+#include "proj/mcu/config.h"
+
+#if (__PROJECT_8266_MASTER_KMA_DONGLE__ || __PROJECT_8267_MASTER_KMA_DONGLE__)
+	#include "../8267_master_kma_dongle/app_config.h"
+#elif (__PROJECT_MESH__ || WIN32)	// include MESH / lib_sig_mesh.
+	#if((MCU_CORE_TYPE == MCU_CORE_8269) || WIN32)
+	#include "../mesh/app_config_8269.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8258)
+	#include "../mesh/app_config_8258.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../mesh/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../mesh/app_config_B91.h"
+	#endif
+#elif (__PROJECT_MESH_LPN__)		// include MESH_LPN / lib_sig_mesh_LPN.
+	#if(MCU_CORE_TYPE == MCU_CORE_8269)
+	#include "../mesh_lpn/app_config_8269.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8258)
+	#include "../mesh_lpn/app_config_8258.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../mesh_lpn/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../mesh_lpn/app_config_B91.h"
+	#endif
+#elif (__PROJECT_MESH_SWITCH__)
+	#if(MCU_CORE_TYPE == MCU_CORE_8269)
+	#include "../mesh_switch/app_config_8269.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8258)
+	#include "../mesh_switch/app_config_8258.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../mesh_switch/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../mesh_switch/app_config_B91.h"
+	#endif
+#elif (__PROJECT_MESH_PRO__ || __PROJECT_MESH_GW_NODE__)
+	#if(MCU_CORE_TYPE == MCU_CORE_8269)
+	#include "../mesh_provision/app_config_8269.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8258)
+	#if(__PROJECT_MESH_GW_NODE_HK__)
+	#include "../mesh_gw_node_homekit/app_config_8258.h"
+	#else
+	#include "../mesh_provision/app_config_8258.h"
+	#endif
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../mesh_provision/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../mesh_provision/app_config_B91.h"
+	#endif
+#elif (__PROJECT_SPIRIT_LPN__)
+	#if(MCU_CORE_TYPE == MCU_CORE_8258)
+	#include "../spirit_lpn/app_config_8258.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../spirit_lpn/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../spirit_lpn/app_config_B91.h"
+	#endif
+#elif (__PROJECT_BOOTLOADER__)
+	#if(MCU_CORE_TYPE == MCU_CORE_8269)
+	#include "../boot_loader/app_config_8269.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8258)
+	#include "../boot_loader/app_config_8258.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_8278)
+	#include "../boot_loader/app_config_8278.h"
+	#elif(MCU_CORE_TYPE == MCU_CORE_9518)
+	#include "../boot_loader/app_config_B91.h"
+	#endif
 #else
 	#include "../common/default_config.h"
 #endif

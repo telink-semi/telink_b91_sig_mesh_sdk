@@ -1,25 +1,27 @@
 /********************************************************************************************************
- * @file     user_ali.c 
+ * @file	user_ali.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #include "user_ali.h"
 #include "app_health.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
@@ -28,8 +30,8 @@
 #include "fast_provision_model.h"
 #include "proj_lib/ble/service/ble_ll_ota.h"
 #include "proj_lib/mesh_crypto/aes_cbc.h"
-#include "vendor/common/app_provison.h"
-const char num2char[] = "0123456789abcdef";
+
+const char num2char[17] = "0123456789abcdef";
 
 
 #if(AIS_ENABLE)
@@ -45,9 +47,9 @@ STATIC_ASSERT(sizeof(sha256_dev_uuid_str) <= 16);   // because sizeof dev uuid i
 	#else
 #if(MESH_USER_DEFINE_MODE == MESH_CLOUD_ENABLE)
 u32 con_product_id=192941;// little endiness 
-#if(MESH_USER_DEFINE_MODE != MESH_MI_SPIRIT_ENABLE)
+	#if(MESH_USER_DEFINE_MODE != MESH_MI_SPIRIT_ENABLE)
 const
-#endif
+	#endif
 u8 con_mac_address[6]={0xee,0x11,0x33,0x55,0x77,0x03};//small endiness
 //char con_sec_data[]="claoePqYe1avDpmf8Jcm4jF52kVOLS1Q";
 char con_sec_data[32];
@@ -66,7 +68,43 @@ u8 con_sec_data[16]={ 0x04,0x6e,0x68,0x11,0x27,0xed,0xe6,0x70,
 u8 con_sec_data[16];
     #endif
 #define SIZE_CON_SEC_DATA   (sizeof(con_sec_data))
+#elif((MESH_USER_DEFINE_MODE == MESH_TAIBAI_ENABLE))
+	#if 0
+	u32 con_product_id=7003001;// little endiness 
+	u8  con_mac_address[6]={0x6e,0x79,0x12,0x75,0x60,0xd4};//small endiness
+	u8 con_sec_data[16];
+	#else
+		#if DU_LPN_EN
+			#if LPN_CONTROL_EN
+	u32 con_product_id=DU_PID;// little endiness 
+	//48f3f3bf28b0
+	u8  con_mac_address[6]={0xb0,0x28,0xbf,0xf3,0xf3,0x48};
+	//e2458e28034096672f7a4cc5dcae47a5
+	u8 con_sec_data[16]={0xe2,0x45,0x8e,0x28,	0x03,0x40,0x96,0x67,
+						 0x2f,0x7a,0x4c,0xc5,	0xdc,0xae,0x47,0xa5};			
+			#else
+	//006ae731
+	u32 con_product_id=DU_PID;// little endiness 
+	//882d53f66826
+	u8  con_mac_address[6]={0xc1,0x2d,0x6f,0xda,0xe0,0xcc};//little endiness
+	//968829854b47b5dfb09d9edfcc8b9a0f
+	u8 con_sec_data[16]={0x54,0x26,0x27,0xd3,	0x60,0x58,0x94,0xcf,
+						 0x48,0xa9,0xc8,0x1c,	0x8b,0x8c,0x78,0xc0};
+		    #endif
+		#elif DU_ULTRA_PROV_EN
+		u32 con_product_id=0x6b1df1; 
+		u8  con_mac_address[6]={0xb6,0x8c,0x12,0x75,0x60,0xd4};
+		u8 con_sec_data[16]={0x7b,0x45,0xe1,0x86,0xe0,0x84,0xc2,0xca,0xdb,0xe3,0x73,0x7c,0x8e,0x9a,0xd4,0x8f};
+		#else
+	u32 con_product_id=DU_PID;// little endiness 
+	u8  con_mac_address[6]={0x7D,0x79,0x12,0x75,0x60,0xd4};//little endiness
+	u8 con_sec_data[16]={0x49,0x22,0xeb,0x7a,	0x0a,0x45,0x81,0x8d,
+						 0xa4,0x34,0x7c,0xd4,	0xed,0x1b,0x4c,0xf9};
+
+		#endif
 	#endif
+	#define SIZE_CON_SEC_DATA   (sizeof(con_sec_data))
+#endif
 #endif
 
 #if(DUAL_VENDOR_EN)
@@ -127,7 +165,7 @@ void set_dev_uuid_for_sha256()
 	sha256_dev_uuid_str dev_uuid;
 	sha256_dev_uuid_str *p_uuid = &dev_uuid;
 	memset(p_uuid,0,sizeof(sha256_dev_uuid_str));
-	p_uuid->cid = SHA256_BLE_MESH_PID;
+	p_uuid->cid = VENDOR_ID;
 	p_uuid->adv_ver = 0x01;
 	p_uuid->ser_fun = 1;
 	p_uuid->ota_en =1;
@@ -247,7 +285,6 @@ void caculate_sha256_to_create_pro_oob(u8 *pro_auth,u8 *random)
 void caculate_sha256_to_create_static_oob()
 {
 	#if !WIN32		// comfirm later
-	//extern u8 dev_random[16];
 	u8 sha256_out[32];
 	caculate_sha256_node_oob(sha256_out,dev_random);
 	mesh_set_dev_auth(sha256_out, 16);

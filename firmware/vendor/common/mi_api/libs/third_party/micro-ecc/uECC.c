@@ -363,7 +363,7 @@ uECC_VLI_API uECC_word_t uECC_vli_sub(uECC_word_t *result,
 }
 #endif /* !asm_sub */
 
-#if (1)&&!asm_mult || (uECC_SQUARE_FUNC && !asm_square) || \
+#if (1/*for B91*/ || MI_API_ENABLE)&&!asm_mult || (uECC_SQUARE_FUNC && !asm_square) || \
     (uECC_SUPPORTS_secp256k1 && (uECC_OPTIMIZATION_LEVEL > 0) && \
         ((uECC_WORD_SIZE == 1) || (uECC_WORD_SIZE == 8)))
 static void muladd(uECC_word_t a,
@@ -414,7 +414,7 @@ uECC_VLI_API void uECC_vli_mult(uECC_word_t *result,
                                 const uECC_word_t *left,
                                 const uECC_word_t *right,
                                 wordcount_t num_words) {
-#if 0&&uECC_PLATFORM == uECC_telink
+#if uECC_PLATFORM == uECC_telink
     extern void mpn_mul (unsigned int * r, unsigned int * a, int na, unsigned int * b, int nb);
     mpn_mul((unsigned int *)result,(unsigned int *)left,(int)num_words,
             (unsigned int *)right,(int)num_words);

@@ -1,23 +1,26 @@
 /********************************************************************************************************
- * @file     light.c 
+ * @file	light.c
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/ble/blt_config.h"
@@ -30,17 +33,16 @@
 #include "vendor/common/generic_model.h"
 #include "vendor/common/scene.h"
 #include "light.h"
-#include "drivers/9518/compiler.h"
 #if HOMEKIT_EN
 #include "vendor/common/led_cfg.h"
 #endif
 #if WIN32
 #include <stdlib.h>
 #else
-#include "drivers/9518/watchdog.h"
-#include "drivers/9518/pm.h"
+#include "proj/mcu/watchdog_i.h"
+#include "proj_lib/pm.h"
 #endif
-#include "vendor/common/user_config.h"
+
 
 /** @addtogroup Mesh_Common
   * @{
@@ -107,7 +109,7 @@ const light_res_hw_t light_res_hw[LIGHT_CNT][1] = {
 #endif
 #endif
 
-const u32 GPIO_LED_INDEX = (GPIO_LED == PWM_R) ? 0 : ((GPIO_LED == PWM_G) ? 1 : ((GPIO_LED == PWM_B) ? 2 : ((GPIO_LED == PWM_W) ? 3 : 0)));
+const u32 GPIO_LED_INDEX = (((u32)GPIO_LED == (u32)PWM_R) ? 0 : (((u32)GPIO_LED == (u32)PWM_G) ? 1 : (((u32)GPIO_LED == (u32)PWM_B) ? 2 : (((u32)GPIO_LED == (u32)PWM_W) ? 3 : 0))));
 
 #define LIGHT_ADJUST_INTERVAL       (20)   // unit :ms;     min:20ms; max 100ms
 
@@ -182,11 +184,25 @@ s16 get_on_power_up_last(sw_level_save_t *p_save)
 	return (p_save->onoff ? p_save->last : LEVEL_OFF);
 }
 
-#if KEEP_ONOFF_STATE_AFTER_OTA
+#if (!WIN32)
+#if 1 // KEEP_ONOFF_STATE_AFTER_OTA // alway on, because lpn need to set in gatt adv mode after ota reboot.
+#define OTA_REBOOT_CHECK_FLAG			(KEEP_ONOFF_STATE_AFTER_OTA ? FLD_OTA_REBOOT_FLAG : 0)
+
 void set_keep_onoff_state_after_ota()
 {
-	analog_write(DEEP_ANA_REG0, analog_read(DEEP_ANA_REG0) | BIT(OTA_REBOOT_FLAG));
+	analog_write(DEEP_ANA_REG0, analog_read(DEEP_ANA_REG0) | FLD_OTA_REBOOT_FLAG);
 }
+
+void clr_keep_onoff_state_after_ota()
+{
+	analog_write(DEEP_ANA_REG0, analog_read(DEEP_ANA_REG0) & (~ FLD_OTA_REBOOT_FLAG));
+}
+
+int is_state_after_ota()
+{
+	return (analog_read(DEEP_ANA_REG0) & FLD_OTA_REBOOT_FLAG);
+}
+#endif
 #endif
 
 void mesh_global_var_init_light_sw()
@@ -260,7 +276,7 @@ void light_res_sw_load()
 			#if(WIN32)
 			if(ONPOWER_UP_STORE == ONPOWER_UP_VAL(i)){
 			#else
-			if((ONPOWER_UP_STORE == ONPOWER_UP_VAL(i)) || ((ST_TRANS_LIGHTNESS == k) && (analog_read(DEEP_ANA_REG0)&BIT(OTA_REBOOT_FLAG)))){
+			if((ONPOWER_UP_STORE == ONPOWER_UP_VAL(i)) || ((ST_TRANS_LIGHTNESS == k) && (analog_read(DEEP_ANA_REG0)&(OTA_REBOOT_CHECK_FLAG|FLD_LOW_BATT_FLG)))){
 			#endif
 				level_poweron = get_on_power_up_last(p_save);
 			}
@@ -310,13 +326,19 @@ void light_transition_onoff_manual(u8 onoff, u8 transit_t, u8 light_idx)
 
 u8 edch_is_exist()
 {
+#if PROV_AUTH_LEAK_RECREATE_KEY_EN
+#else
 	u32 *p_edch = (u32 *) FLASH_ADR_EDCH_PARA;
 	if(*p_edch == 0xffffffff){
 		return 0;
 	}	
+#endif
 	return 1;
 }
 
+/*
+ * light pwm init() will cost 1.5ms when 16MHz. so it should not be called directly when retention wakeup.
+ */
 void light_pwm_init()
 {
 #if ((!IS_VC_PROJECT)&&(!__PROJECT_SPIRIT_LPN__))
@@ -326,23 +348,34 @@ void light_pwm_init()
     #endif
 
     #if PWM_CLK_DIV_LIGHT
-    //reg_pwm_clk = PWM_CLK_DIV_LIGHT;    // default value of reg_pwm_clk is 0.
+    reg_pwm_clk = PWM_CLK_DIV_LIGHT;    // default value of reg_pwm_clk is 0.
     #endif
-	
-	
+    
     foreach(i, LIGHT_CNT){
     	foreach_arr(k,light_res_hw[0]){
 			u16 level_def = 0;	// PWM_MAX_TICK;	 //
-			const light_res_hw_t *p_hw = &light_res_hw[i][k];	       
-	        gpio_function_en(p_hw->gpio);
+			const light_res_hw_t *p_hw = &light_res_hw[i][k];
+		#if __TLSR_RISCV_EN__
      		//gpio_output_en(p_hw->gpio);
      		//gpio_input_dis(p_hw->gpio);
 			pwm_set_clk((unsigned char) (sys_clk.pclk*1000*1000/PWM_PCLK_SPEED-1));
 			pwm_set_tcmp(p_hw->id,(p_hw->invert ? (PWM_MAX_TICK - level_def) : level_def));
 	 		pwm_set_tmax(p_hw->id,PWM_MAX_TICK);
 			pwm_start(p_hw->id);
-			pwm_set_pin(p_hw->gpio);	
+	        gpio_function_en(p_hw->gpio);
+			pwm_set_pin(p_hw->gpio);
+		#else
+	        pwm_set(p_hw->id, PWM_MAX_TICK, p_hw->invert ? (PWM_MAX_TICK - level_def) : level_def);
+	        // light_dim_refresh(i);
+	        pwm_start(p_hw->id);
+	        #if((MCU_CORE_TYPE==MCU_CORE_8258) || (MCU_CORE_TYPE==MCU_CORE_8278))
+	        gpio_set_func(p_hw->gpio, p_hw->func);
+	        #else
+	        gpio_set_func(p_hw->gpio, AS_PWM);
+	        #endif
+		#endif	
         }
+        
         int onoff_present = light_g_onoff_present_get(i);
         #if (DUAL_MODE_ADAPT_EN || DUAL_MODE_WITH_TLK_MESH_EN)
         if(DUAL_MODE_SUPPORT_ENABLE == dual_mode_state){
@@ -353,15 +386,18 @@ void light_pwm_init()
             light_transition_onoff_manual(G_OFF, 0, i);
             if(onoff_present && CB_USER_LIGHT_INIT_ON_CONDITION()){
 				#if !MI_SWITCH_LPN_EN
-				light_transition_onoff_manual(G_ON, (analog_read(DEEP_ANA_REG0)&BIT(OTA_REBOOT_FLAG))?0:edch_is_exist()?g_def_trans_time_val(i):0, i);
+				light_transition_onoff_manual(G_ON, (analog_read(DEEP_ANA_REG0)&(OTA_REBOOT_CHECK_FLAG|FLD_LOW_BATT_LOOP_FLG))?0:edch_is_exist()?g_def_trans_time_val(i):0, i);
 				#endif
 			}
         }
     }
+
+    clr_keep_onoff_state_after_ota();
 #endif
 }
 #else
 void light_pwm_init(){}
+void set_keep_onoff_state_after_ota(){}
 #endif
 
 static u32 tick_light_save;
@@ -404,12 +440,17 @@ void pwm_set_lum (int id, u16 y, int pol)
 	#endif
 #else
     u32 level = ((u32)y * PWM_MAX_TICK) / (255*256);
+
+	#if __TLSR_RISCV_EN__
 	if(pol){
 		pwm_set_tcmp(id,PWM_MAX_TICK - level);
 	}else{
 		pwm_set_tcmp(id,level);
 	}
 	pwm_set_tmax(id,PWM_MAX_TICK);
+	#else
+	pwm_set_cmp (id, pol ? PWM_MAX_TICK - level : level);
+	#endif
 #endif
 }
 
@@ -555,7 +596,7 @@ _USER_CAN_REDEFINE_ void light_dim_refresh(int idx) // idx: index of LIGHT_CNT.
 #endif
     //LOG_MSG_INFO(DEBUG_SHOW_VC_SELF_EN ? TL_LOG_COMMON : TL_LOG_MESH,0,0,"present_lum %d", lum_100);
 	CB_NL_PAR_NUM_3(p_nl_level_state_changed,idx * ELE_CNT_EVERY_LIGHT + ST_TRANS_LIGHTNESS, p_trans->present, p_trans->target);
-#if (FEATURE_LOWPOWER_EN || GATT_LPN_EN)
+#if (FEATURE_LOWPOWER_EN || GATT_LPN_EN|| LPN_CONTROL_EN)
     foreach_arr(i,light_res_hw[LIGHT_CNT]){
         const light_res_hw_t *p_hw = &light_res_hw[idx][i];
         led_onoff_gpio(p_hw->gpio, 0 != lum_100);
@@ -570,7 +611,7 @@ _USER_CAN_REDEFINE_ void light_dim_refresh(int idx) // idx: index of LIGHT_CNT.
     if(ct_flag && (lum_100 != 0)){
 	    u16 temp = light_ctl_temp_prensent_get(idx);
 	    ct_100 = temp_to_temp100_hw(temp);
-		static u8 debug_ct_100; debug_ct_100 = ct_100;
+		//__UNUSED static u8 debug_ct_100; debug_ct_100 = ct_100;
     }
             #if (XIAOMI_MODULE_ENABLE&&!AIS_ENABLE)
     //calc the temp100 transfer for mi 
@@ -1068,6 +1109,7 @@ void light_g_level_set_idx_with_trans(u8 *set_trans, int idx, int st_trans_type,
 					}
 
 					if(ST_TRANS_HSL_HUE == st_trans_type){
+					    // hue is a circular parameter from 0~360 degree
 					    delta = get_Hue_delta_value(s16_to_u16(p_trans->target), s16_to_u16(p_trans->present));
 					}
 					#endif
@@ -1152,7 +1194,19 @@ s16 light_get_next_level(int idx, int st_trans_type)
 	p_trans->present_1p32768 = adjust_1p32768 % 32768;
 
 	#if LIGHT_TYPE_HSL_EN
-	if(ST_TRANS_HSL_HUE != st_trans_type)   // hue is a circular parameter from 0~360 degree
+	if(ST_TRANS_HSL_HUE == st_trans_type){   // hue is a circular parameter from 0~360 degree
+	    #if (HSL_HUE_MAX < 0xffff)
+        result = s16_to_u16((s16)result);
+	    u16 logic_hue_max = HSL_HUE_MAX;
+        if(result > logic_hue_max){
+            if(adjust_1p32768 < 0){
+                result = HSL_HUE_MAX - (0xffff - result);
+            }
+            result %= (HSL_HUE_MAX + 1);
+        }
+        result = u16_to_s16((u16)result);
+	    #endif
+	}else
 	#endif
 	{
         result = get_val_with_check_range(result, p_save->min, p_save->max, st_trans_type);
@@ -1291,7 +1345,7 @@ int is_led_busy()
 }
 
 void led_onoff_gpio(u32 gpio, u8 on){
-#if (FEATURE_LOWPOWER_EN || GATT_LPN_EN)
+#if (FEATURE_LOWPOWER_EN || PM_DEEPSLEEP_RETENTION_ENABLE)
     gpio_set_func (gpio, AS_GPIO);
     gpio_set_output_en (gpio, 0);
     gpio_write(gpio, 0);
@@ -1303,7 +1357,7 @@ void led_onoff_gpio(u32 gpio, u8 on){
 #endif
 }
 
-#if __PROJECT_MESH_SWITCH__
+#if (__PROJECT_MESH_SWITCH__ || PM_DEEPSLEEP_RETENTION_ENABLE)
 void proc_led()
 {
 	if(p_vendor_proc_led){
@@ -1346,6 +1400,9 @@ void proc_led()
 				if (led_no - 1 == led_count)
 				{
 					led_count = led_no = 0;
+					#if (!__PROJECT_MESH_SWITCH__)
+					light_dim_refresh_all(); // should not report online status again
+					#endif
 					return ;
 				}
 			}
@@ -1532,10 +1589,11 @@ void light_ev_with_sleep(u32 count, u32 half_cycle_us)
 
 _USER_CAN_REDEFINE_ void show_ota_result(int result)
 {
-	if(result == OTA_SUCCESS){
+	if(result == OTA_REBOOT_NO_LED){
+		// nothing
+	}else if(result == OTA_SUCCESS){
 		light_ev_with_sleep(3, 1000*1000);	//0.5Hz shine for  6 second
-	}
-	else{
+	}else{
 		light_ev_with_sleep(30, 100*1000);	//5Hz shine for  6 second
 		//write_reg8(0x8000,result); ;while(1);  //debug which err lead to OTA fail
 	}

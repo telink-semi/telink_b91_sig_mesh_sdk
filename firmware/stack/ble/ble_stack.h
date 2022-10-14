@@ -1,24 +1,24 @@
 /********************************************************************************************************
  * @file	ble_stack.h
  *
- * @brief	for TLSR chips
+ * @brief	This is the header file for BLE SDK
  *
  * @author	BLE GROUP
- * @date	2020.06
+ * @date	06,2020
  *
  * @par		Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd.
  *			All rights reserved.
  *
- *			The information contained herein is confidential property of Telink
+ *          The information contained herein is confidential property of Telink
  *          Semiconductor (Shanghai) Co., Ltd. and is available under the terms
  *          of Commercial License Agreement between Telink Semiconductor (Shanghai)
  *          Co., Ltd. and the licensee or the terms described here-in. This heading
  *          MUST NOT be removed from this file.
  *
- *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or  
- *          alter) any information contained herein in whole or in part except as expressly authorized  
- *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible  
- *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)  
+ *          Licensee shall not delete, modify or alter (or permit any third party to delete, modify, or
+ *          alter) any information contained herein in whole or in part except as expressly authorized
+ *          by Telink semiconductor (shanghai) Co., Ltd. Otherwise, licensee shall be solely responsible
+ *          for any claim to the extent arising out of or relating to such deletion(s), modification(s)
  *          or alteration(s).
  *
  *          Licensees are granted free, non-transferable use of the information in this
@@ -121,21 +121,23 @@
 
 #elif (BLUETOOTH_VER == BLUETOOTH_VER_4_2)
 
-	#define LL_FEATURE_ENABLE_LE_ENCRYPTION								1
-	#define	LL_FEATURE_ENABLE_EXTENDED_REJECT_INDICATION				1
-	#define	LL_FEATURE_ENABLE_SLAVE_INITIATED_FEATURES_EXCHANGE			1
-	#define	LL_FEATURE_ENABLE_LE_PING									1
-	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					BLE_CORE42_DATA_LENGTH_EXTENSION_ENABLE
+	#define LL_FEATURE_ENABLE_LE_ENCRYPTION								0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_EXTENDED_REJECT_INDICATION				0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_SLAVE_INITIATED_FEATURES_EXCHANGE			0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_LE_PING									0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					LL_FEATURE_SUPPORT_LE_DATA_LENGTH_EXTENSION
+	#define	LL_FEATURE_ENABLE_LL_PRIVACY								0
 
 	#define LL_CMD_MAX						  							LL_LENGTH_RSP
 
 #elif (BLUETOOTH_VER == BLUETOOTH_VER_5_0)
 
-	#define LL_FEATURE_ENABLE_LE_ENCRYPTION								1
-	#define	LL_FEATURE_ENABLE_EXTENDED_REJECT_INDICATION				1
-	#define	LL_FEATURE_ENABLE_SLAVE_INITIATED_FEATURES_EXCHANGE			1
-	#define	LL_FEATURE_ENABLE_LE_PING									1
-	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					BLE_CORE42_DATA_LENGTH_EXTENSION_ENABLE
+	#define LL_FEATURE_ENABLE_LE_ENCRYPTION								0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_EXTENDED_REJECT_INDICATION				0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_SLAVE_INITIATED_FEATURES_EXCHANGE			0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_LE_PING									0 // by weixiong. // BLE_SRC_TELINK_MESH_EN
+	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					LL_FEATURE_SUPPORT_LE_DATA_LENGTH_EXTENSION
+	#define	LL_FEATURE_ENABLE_LL_PRIVACY								0
 
 	#define	LL_FEATURE_ENABLE_LE_2M_PHY									LL_FEATURE_SUPPORT_LE_2M_PHY
 	#define	LL_FEATURE_ENABLE_LE_CODED_PHY								LL_FEATURE_SUPPORT_LE_CODED_PHY
@@ -143,9 +145,10 @@
 	#define	LL_FEATURE_ENABLE_LE_PERIODIC_ADVERTISING					LL_FEATURE_SUPPORT_LE_PERIODIC_ADVERTISING
 	#define	LL_FEATURE_ENABLE_CHANNEL_SELECTION_ALGORITHM2				LL_FEATURE_SUPPORT_CHANNEL_SELECTION_ALGORITHM2
 
+	#define	LL_FEATURE_ENABLE_LE_EXTENDED_SCAN							0 //vendor define
 	#define LL_CMD_MAX						   							LL_MIN_USED_CHN_IND
 
-	#define	LL_FEATURE_ENABLE_LE_EXTENDED_SCAN							1
+	
 
 #elif (BLUETOOTH_VER == BLUETOOTH_VER_5_1)
 
@@ -155,7 +158,7 @@
 	#define	LL_FEATURE_ENABLE_EXTENDED_REJECT_INDICATION				1
 	#define	LL_FEATURE_ENABLE_SLAVE_INITIATED_FEATURES_EXCHANGE			1
 	#define	LL_FEATURE_ENABLE_LE_PING									1
-	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					BLE_CORE42_DATA_LENGTH_EXTENSION_ENABLE
+	#define	LL_FEATURE_ENABLE_LE_DATA_LENGTH_EXTENSION					LL_FEATURE_SUPPORT_LE_DATA_LENGTH_EXTENSION
 	#define	LL_FEATURE_ENABLE_LE_2M_PHY									LL_FEATURE_SUPPORT_LE_2M_PHY
 	#define	LL_FEATURE_ENABLE_LE_CODED_PHY								LL_FEATURE_SUPPORT_LE_CODED_PHY
 	#define	LL_FEATURE_ENABLE_LE_EXTENDED_ADVERTISING					LL_FEATURE_SUPPORT_LE_EXTENDED_ADVERTISING
@@ -180,7 +183,7 @@
 																			| LL_FEATURE_ENABLE_ISOCHRONOUS_BROADCASTER				\
 																			| LL_FEATURE_ENABLE_SYNCHRONIZED_RECEIVER )
 
-	#define	LL_FEATURE_ENABLE_LE_EXTENDED_SCAN							1  //Vendor define
+	#define	LL_FEATURE_ENABLE_LE_EXTENDED_SCAN							0  //Vendor define
 
 	#define LL_CMD_MAX						   							LL_POWER_CHANGE_IND
 
@@ -402,11 +405,6 @@ extern u32 LL_FEATURE_MASK_1;
 
 
 
-#define 		PHY_USED_AUXPTR_LE_1M							0
-#define 		PHY_USED_AUXPTR_LE_2M							1
-#define 		PHY_USED_AUXPTR_LE_CODED						2
-
-
 
 
 
@@ -427,6 +425,16 @@ typedef enum advChannelPDUType_e {
 } advChannelPDUType_t;
 
 
+typedef enum {
+	TYPE_MASK_ADV_IND 	 		= 	BIT(0),
+	TYPE_MASK_ADV_DIRECT_IND	=	BIT(1),
+	TYPE_MASK_ADV_NONCONN_IND 	= 	BIT(2),
+	TYPE_MASK_SCAN_REQ  	 	= 	BIT(3),
+	TYPE_MASK_SCAN_RSP 		 	= 	BIT(4),
+	TYPE_MASK_CONNNECT_REQ 	 	= 	BIT(5),
+	TYPE_MASK_ADV_SCAN_IND 		= 	BIT(6),
+	TYPE_MASK_EXT_ADV 	 		= 	BIT(7),
+} advTypeMask_t;
 
 
 /**
@@ -538,7 +546,8 @@ typedef enum {
 
 
 
-
-
+void smemset(void * dest, int val, int len);
+void smemcpy(void *pd, void *ps, int len);
+int smemcmp(void * m1, void * m2, int len);
 
 #endif /* BLE_STACK_H_ */

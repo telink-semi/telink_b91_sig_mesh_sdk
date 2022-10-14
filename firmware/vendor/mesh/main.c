@@ -3,61 +3,33 @@
  *
  * @brief	for TLSR chips
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #include "tl_common.h"
-#include "drivers/9518/watchdog.h"
+#include "proj/mcu/watchdog_i.h"
 #include "vendor/common/user_config.h"
-#include "drivers/9518/rf.h"
-#include "drivers/9518/pm.h"
+#include "drivers.h"
 #include "proj_lib/ble/blt_config.h"
 #include "proj_lib/ble/ll/ll.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
-#include "app_config.h"
-#include "../../drivers.h"
 
-#include "tl_common.h"
-#include "../common/blt_common.h"
-#include "drivers.h"
-#include "stack/ble/ble.h"
 extern void user_init();
 extern void main_loop ();
 void blc_pm_select_none();
@@ -135,19 +107,22 @@ void irq_gpio_handle()
 }
 #endif
 
-
 _attribute_ram_code_ void irq_handler(void)
 {
-#if DUAL_MODE_ADAPT_EN
+	#if ACTIVE_SCAN_ENABLE
+	rp_active_scan_req_proc();
+	#endif
+	#if DUAL_MESH_ZB_BL_EN
 	if(rf_mode == RF_MODE_ZIGBEE){
 		irq_zigbee_sdk_handler();
 	}else
-#endif
+	#endif
 	{
 		irq_blt_sdk_handler ();  //ble irq proc
 	}
+
 #if IRQ_TIMER1_ENABLE
-irq_timer_handle();
+	irq_timer_handle();
 #endif
 
 }
@@ -215,48 +190,67 @@ _attribute_ram_code_ int main (void)    //must run in ramcode
 {
 	FLASH_ADDRESS_CONFIG;
 #if (PINGPONG_OTA_DISABLE && (0 == FW_START_BY_BOOTLOADER_EN))
-	
-    //ota_fw_check_over_write();  // must at first for main_
+    ota_fw_check_over_write();  // must at first for main_
 #endif
+
+#if SLEEP_FUNCTION_DISABLE
+    blc_pm_select_none();
+#else
 	blc_pm_select_internal_32k_crystal();
+#endif
 #if(MCU_CORE_TYPE == MCU_CORE_8258)
 	cpu_wakeup_init();
 #elif(MCU_CORE_TYPE == MCU_CORE_8278)
 	cpu_wakeup_init(LDO_MODE,EXTERNAL_XTAL_24M);
 #elif(MCU_CORE_TYPE == MCU_CORE_9518)
-	sys_init(LDO_1P4_LDO_1P8);
+	sys_init(DCDC_1P4_LDO_1P8,VBAT_MAX_VALUE_GREATER_THAN_3V6); // need to confirm if want to use DCDC.
 #endif
 
+	/* detect if MCU is wake_up from deep retention mode */
 	int deepRetWakeUp = pm_is_MCU_deepRetentionWakeup();  //MCU deep retention wakeUp
 
-#if (CLOCK_SYS_CLOCK_HZ == 16000000)
-	CCLK_16M_HCLK_16M_PCLK_16M;
-#elif (CLOCK_SYS_CLOCK_HZ == 24000000)
-	CCLK_24M_HCLK_24M_PCLK_24M;
-#elif (CLOCK_SYS_CLOCK_HZ == 32000000)
-	CCLK_32M_HCLK_32M_PCLK_16M;
-#elif (CLOCK_SYS_CLOCK_HZ == 48000000)
-	CCLK_48M_HCLK_48M_PCLK_24M;
-#elif (CLOCK_SYS_CLOCK_HZ == 64000000)
-	CCLK_64M_HCLK_32M_PCLK_16M;
-#endif
+#if (MCU_CORE_TYPE == MCU_CORE_9518)
+	clock_init_B91();
+	#if (MODULE_WATCHDOG_ENABLE)
+	wd_set_interval_ms(WATCHDOG_INIT_TIMEOUT);
+	wd_start();
+	#endif
+	rf_drv_ble_init();
+	gpio_init(!deepRetWakeUp);
+	if(!deepRetWakeUp){//read flash size
 
+		//blc_readFlashSize_autoConfigCustomFlashSector(); called in global init.
+
+		#if (FLASH_FIRMWARE_CHECK_ENABLE)
+			blt_firmware_completeness_check();
+		#endif
+
+		#if FIRMWARES_SIGNATURE_ENABLE
+			blt_firmware_signature_check();
+		#endif
+	}
+
+	/* load customized freq_offset cap value. */
+	blc_app_loadCustomizedParameters();
+#else
 	rf_drv_init(RF_MODE_BLE_1M);
 	gpio_init( !deepRetWakeUp );  //analog resistance will keep available in deepSleep mode, so no need initialize again
+    clock_init(SYS_CLK_CRYSTAL);
+#endif
+
 
 #if	(PM_DEEPSLEEP_RETENTION_ENABLE)
-		if( pm_is_MCU_deepRetentionWakeup() ){
-			//user_init_deepRetn ();
-		}
-		else
+	if( deepRetWakeUp ){ // MCU wake_up from deepSleep retention mode
+		user_init_deepRetn ();
+	}
+	else // MCU power_on or wake_up from deepSleep mode
 #endif
 	{
 		user_init();
 	}
 
-
     irq_enable();
-	#if (MESH_USER_DEFINE_MODE == MESH_IRONMAN_MENLO_ENABLE)
+	#if (DEBUG_LOG_SETTING_DEVELOP_MODE_EN || (MESH_USER_DEFINE_MODE == MESH_IRONMAN_MENLO_ENABLE))
 	LOG_USER_MSG_INFO(0, 0,"[mesh] Start from SIG Mesh", 0);
 	#endif
 
@@ -266,5 +260,6 @@ _attribute_ram_code_ int main (void)    //must run in ramcode
 #endif
 		main_loop ();
 	}
+	return 0;
 }
 #endif

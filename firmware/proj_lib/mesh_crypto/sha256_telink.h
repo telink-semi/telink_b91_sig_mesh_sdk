@@ -1,30 +1,33 @@
 /********************************************************************************************************
- * @file     sha256_telink.h 
+ * @file	sha256_telink.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	Mesh Group
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 #ifndef MBEDTLS_SHA256_H
 #define MBEDTLS_SHA256_H
 
 //#include <string.h>
 //#include <stddef.h>
-
+#include "hmac_telink.h"
 
 #include <stdint.h>
 #ifndef NULL
@@ -104,9 +107,6 @@ void mbedtls_sha256_finish( mbedtls_sha256_context *ctx, unsigned char output[32
 /* Internal use */
 void mbedtls_sha256_process( mbedtls_sha256_context *ctx, const unsigned char data[64] );
 
-unsigned int sha256_hkdf(unsigned char *key, unsigned int key_len,unsigned char *salt, unsigned int salt_len,
-						unsigned char *info, unsigned int info_len, unsigned char *out, unsigned int out_len);
-
 #ifdef __cplusplus
 }
 #endif
@@ -126,6 +126,34 @@ extern "C" {
  */
 void mbedtls_sha256( const unsigned char *input, size_t ilen,
            unsigned char output[32], int is224 );
+
+
+int mbedtls_internal_sha256_process( mbedtls_sha256_context *ctx,
+                                const unsigned char data[64] );
+
+void mbedtls_sha256_process( mbedtls_sha256_context *ctx,
+                             const unsigned char data[64] );
+
+int mbedtls_sha256_update_ret( mbedtls_sha256_context *ctx,
+                               const unsigned char *input,
+                               size_t ilen );
+int mbedtls_sha256_finish_ret( mbedtls_sha256_context *ctx,
+                               unsigned char output[32] );
+
+void mbedtls_sha256_finish( mbedtls_sha256_context *ctx,
+                            unsigned char output[32] );
+
+int mbedtls_sha256_ret( const unsigned char *input,
+                        size_t ilen,
+                        unsigned char output[32],
+                        int is224 );
+
+void mbedtls_sha256( const unsigned char *input,
+                     size_t ilen,
+                     unsigned char output[32],
+                     int is224 );
+
+int mbedtls_sha256_starts_ret( mbedtls_sha256_context *ctx, int is224 );
 
 /**
  * \brief          Checkup routine

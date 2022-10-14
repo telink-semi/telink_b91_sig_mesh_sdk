@@ -1,49 +1,64 @@
 /********************************************************************************************************
- * @file     subnet_bridge.h 
+ * @file	subnet_bridge.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	telink
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
-
 #ifndef SUBNET_DIRECTED_H
 #define SUBNET_DIRECTED_H
 #include "tl_common.h"
 #include "proj_lib/sig_mesh/app_mesh.h"
+#include "directed_forwarding.h"
 
 #define MAX_BRIDGE_ENTRIES			0x10
 
-#define SUBNET_BRIDGE_GET			0x65BF
-#define SUBNET_BRIDGE_SET 			0x66BF
-#define SUBNET_BRIDGE_STATUS		0x67BF
-#define BRIDGING_TABLE_ADD			0x68BF
-#define BRIDGING_TABLE_REMOVE		0x69BF
-#define BRIDGING_TABLE_STATUS		0x6ABF
-#define BRIDGED_SUBNETS_GET 		0x6BBF
-#define BRIDGED_SUBNETS_LIST		0x6CBF
-#define BRIDGING_TABLE_GET			0x6DBF
-#define BRIDGING_TABLE_LIST			0x6EBF
-#define BRIDGING_TABLE_SIZE_GET	 	0x6FBF
-#define BRIDGING_TABLE_SIZE_STATUS	0x70BF
+#define SUBNET_BRIDGE_GET			0x70BF
+#define SUBNET_BRIDGE_SET 			0x71BF
+#define SUBNET_BRIDGE_STATUS		0x72BF
+#define BRIDGING_TABLE_ADD			0x73BF
+#define BRIDGING_TABLE_REMOVE		0x74BF
+#define BRIDGING_TABLE_STATUS		0x75BF
+#define BRIDGED_SUBNETS_GET 		0x76BF
+#define BRIDGED_SUBNETS_LIST		0x77BF
+#define BRIDGING_TABLE_GET			0x78BF
+#define BRIDGING_TABLE_LIST			0x79BF
+#define BRIDGE_CAPABILITY_GET	 	0x7aBF
+#define BRIDGE_CAPABILITY_STATUS	0x7bBF
 
 enum{
 	SUBNET_BRIDGE_DISABLE,
 	SUBNET_BRIDGE_ENABLE,
 	SUBNET_BRIDGE_PROHIBITED,
+};
+
+enum{
+	REPORT_ALL_PAIRS,
+	REPORT_FIRST_SUBNET,
+	REPORT_SND_SUBNET,
+	REPORT_ANY_SUBNET,
+};
+
+enum{
+	ONE_WAY_DIRECTION=1,
+	TWO_WAY_DIRECTION=2,
 };
 
 typedef struct{
@@ -70,6 +85,11 @@ typedef struct{
 }model_bridge_cfg_t;
 
 typedef struct{
+	u32 netkey_index1:12;
+	u32 netkey_index2:12;
+}subnet_list_entry_t;
+
+typedef struct{
 	u64 netkey_index1:12;
 	u64 netkey_index2:12;
 	u64 addr1:16;
@@ -81,8 +101,8 @@ typedef struct{
 	u32 current_directions:8;	
 	u32 netkey_index1:12;
 	u32 netkey_index2:12;
-	u16 addr1:16;
-	u16 addr2:16;
+	u16 addr1;
+	u16 addr2;
 }bridging_tbl_sts_t;
 
 typedef struct{
@@ -116,19 +136,41 @@ typedef struct{
 	u32 status:8;
 	u32 netkey_index1:12;	
 	u32 netkey_index2:12;
-	u16 start_index:16;
+	u16 start_index;
 	bridged_addr_lst_entry_t bridge_list[MAX_BRIDGE_ENTRIES];
 }bridging_tbl_list_t;
 
-extern model_bridge_cfg_t model_sig_bridge_cfg; 
+typedef struct{
+	u8 max_bridge_subnets;
+	u8 max_bridge_tbls; // u8 in pts,but u16 in spec
+}bridge_capa_st_t;
 
+typedef struct{
+#if MD_DF_EN
+	model_df_cfg_t df_cfg;
+#endif
+#if MD_SBR_EN
+	model_bridge_cfg_t bridge_cfg;  
+#endif
+}model_g_df_sbr_t;
+
+extern model_g_df_sbr_t model_sig_g_df_sbr_cfg; 
+extern u32 mesh_md_df_sbr_addr;
+
+int is_subnet_bridge_en();
+int get_subnet_bridge_index(u16 netkey_index, u16 src, u16 dst);
+int is_subnet_bridge_addr(u16 addr1, u16 addr2);
 #if MD_SERVER_EN
+void mesh_remove_node_dependent_by_subnet_bridge();
+void mesh_subnet_bridge_bind_state_update();
 int mesh_cmd_sig_cfg_subnet_bridge_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_subnet_bridge_set(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridging_tbl_add(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridging_tbl_remove(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridged_subnets_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridging_tbl_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
+int mesh_cmd_sig_cfg_bridge_capa_get(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
+
 #else
 #define mesh_cmd_sig_cfg_subnet_bridge_get		(0)
 #define mesh_cmd_sig_cfg_subnet_bridge_set		(0)
@@ -136,6 +178,7 @@ int mesh_cmd_sig_cfg_bridging_tbl_get(u8 *par, int par_len, mesh_cb_fun_par_t *c
 #define mesh_cmd_sig_cfg_bridging_tbl_remove	(0)
 #define mesh_cmd_sig_cfg_bridged_subnets_get	(0)
 #define mesh_cmd_sig_cfg_bridging_tbl_get		(0)
+#define mesh_cmd_sig_cfg_bridge_capa_get		(0)
 #endif
 
 #if MD_CLIENT_EN
@@ -143,11 +186,13 @@ int mesh_cmd_sig_cfg_subnet_bridge_status(u8 *par, int par_len, mesh_cb_fun_par_
 int mesh_cmd_sig_cfg_bridging_tbl_status(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridged_subnets_list(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 int mesh_cmd_sig_cfg_bridging_tbl_list(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
+int mesh_cmd_sig_cfg_bridge_capa_status(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par);
 #else
 #define mesh_cmd_sig_cfg_subnet_bridge_status	(0)
 #define mesh_cmd_sig_cfg_bridging_tbl_status	(0)
 #define mesh_cmd_sig_cfg_bridged_subnets_list	(0)
 #define mesh_cmd_sig_cfg_bridging_tbl_list		(0)
+#define mesh_cmd_sig_cfg_bridge_capa_status		(0)
 #endif
 #endif
 

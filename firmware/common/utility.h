@@ -1,55 +1,30 @@
 /********************************************************************************************************
- * @file	utility.h
+ * @file     utility.h
  *
- * @brief	for TLSR chips
+ * @brief    This is the header file for BLE SDK
  *
- * @author	BLE GROUP
- * @date	2020.06
+ * @author	 BLE GROUP
+ * @date         06,2022
  *
- * @par     Copyright (c) 2020, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
- *          All rights reserved.
- *          
- *          Redistribution and use in source and binary forms, with or without
- *          modification, are permitted provided that the following conditions are met:
- *          
- *              1. Redistributions of source code must retain the above copyright
- *              notice, this list of conditions and the following disclaimer.
- *          
- *              2. Unless for usage inside a TELINK integrated circuit, redistributions 
- *              in binary form must reproduce the above copyright notice, this list of 
- *              conditions and the following disclaimer in the documentation and/or other
- *              materials provided with the distribution.
- *          
- *              3. Neither the name of TELINK, nor the names of its contributors may be 
- *              used to endorse or promote products derived from this software without 
- *              specific prior written permission.
- *          
- *              4. This software, with or without modification, must only be used with a
- *              TELINK integrated circuit. All other usages are subject to written permission
- *              from TELINK and different commercial license may apply.
+ * @par     Copyright (c) 2022, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *              5. Licensee shall be solely responsible for any claim to the extent arising out of or 
- *              relating to such deletion(s), modification(s) or alteration(s).
- *         
- *          THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *          ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *          WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *          DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDER BE LIABLE FOR ANY
- *          DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *          (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *          LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *          ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *          (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *          SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *         
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
-#ifndef COMMON_UTILITY_H_
-#define COMMON_UTILITY_H_
 
 #pragma once
 #include "types.h"
 
-//#define abs(a)   (((a)>0)?((a)):(-(a)))
+#define abs(a)   (((a)>0)?((a)):(-(a)))
 
 #define cat2(i,j)       i##j
 #define cat3(i,j,k)     i##j##k
@@ -100,13 +75,13 @@
 #define U32_CPY(addr1,addr2)	U32_SET(addr1, U32_GET(addr2))
 
 #define MAKE_U16(h,l) 			((unsigned short)(((h) << 8) | (l)))
+#define MAKE_U24(a,b,c)			((unsigned int)(((a) << 16) | ((b) << 8) | (c)))
 #define MAKE_U32(a,b,c,d)		((unsigned int)(((a) << 24) | ((b) << 16) | ((c) << 8) | (d)))
 
 #define BOUND(x, l, m)			((x) < (l) ? (l) : ((x) > (m) ? (m) : (x)))
 #define SET_BOUND(x, l, m)		((x) = BOUND(x, l, m))
 #define BOUND_INC(x, m)			do{++(x); (x) = (x) < (m) ? (x) :0;} while(0)
 #define BOUND_INC_POW2(x, m)	do{								\
-									STATIC_ASSERT_POW2(m);		\
 									(x) = ((x)+1) & (m-1);		\
 								}while(0)
 
@@ -153,7 +128,7 @@
 
 void swapN (unsigned char *p, int n);
 void swapX(const u8 *src, u8 *dst, int len);
-
+void swap16(u8 dst[2], const u8 src[2]);
 void swap24(u8 dst[3], const u8 src[3]);
 void swap32(u8 dst[4], const u8 src[4]);
 void swap48(u8 dst[6], const u8 src[6]);
@@ -163,13 +138,40 @@ void swap64(u8 dst[8], const u8 src[8]);
 
 void swap128(u8 dst[16], const u8 src[16]);
 
-void net_store_16(u8 *buffer, u16 pos, u16 value);
-
 void flip_addr(u8 *dest, u8 *src);
 
-void store_16(u8 *buffer, u16 pos, u16 value);
-void freeTimerTask(void **arg);
+static inline u64 mul64_32x32(u32 u, u32 v)
+{
+#if (0 == __TLSR_RISCV_EN__) //B91 HW support this process
+	#if 1
+	return mul32x32_64(u, v); // for 8266,8267,8268,b85m. but not for hawk.
+	#else
+    u32  u0,   v0,   w0;
+    u32  u1,   v1,   w1,   w2,   t;
+    u32  x, y;
 
+    u0   =   u & 0xFFFF;
+    u1   =   u >> 16;
+    v0   =   v & 0xFFFF;
+    v1   =   v >> 16;
+    w0   =   u0 * v0;
+    t    =   u1 * v0 + (w0 >> 16);
+    w1   =   t & 0xFFFF;
+    w2   =   t >> 16;
+    w1   =   u0 * v1 + w1;
+
+    //x is high 32 bits, y is low 32 bits
+
+    x = u1 * v1 + w2 + (w1 >> 16);
+    y = u * v;
+
+
+    return(((u64)x << 32) | y);
+    #endif
+#else
+    return (u64)u*v;
+#endif
+}
 
 typedef	struct {
 	u32		size;
@@ -187,13 +189,14 @@ typedef	struct {
 
 void my_fifo_init (my_fifo_t *f, int s, u8 n, u8 *p);
 u8* my_fifo_wptr (my_fifo_t *f);
+u8* my_fifo_wptr_v2 (my_fifo_t *f);
 void my_fifo_next (my_fifo_t *f);
 int my_fifo_push (my_fifo_t *f, u8 *p, u16 n, u8 *head, u8 head_len);
-
 void my_fifo_pop (my_fifo_t *f);
 u8 * my_fifo_get (my_fifo_t *f);
 
-#define		MYFIFO_INIT(name,size,n)		u8 name##_b[size * n]={0};my_fifo_t name = {size,n,0,0, name##_b}
+#define		MYFIFO_INIT(name,size,n)		u8 name##_b[(size) * (n)]={0};my_fifo_t name = {size,n,0,0,name##_b};  \
+                                            STATIC_ASSERT(BIT_IS_POW2(n))
 #define		MYFIFO_INIT_NO_RET(name,size,n)		_attribute_no_retention_bss_ u8 name##_b[(size) * (n)]={0};_attribute_no_retention_data_ my_fifo_t name = {size,n,0,0,name##_b};  \
 												STATIC_ASSERT(BIT_IS_POW2(n))
 
@@ -202,5 +205,24 @@ u8 my_fifo_data_cnt_get (my_fifo_t *f);
 u8 my_fifo_free_cnt_get(my_fifo_t *f);
 void my_fifo_reset(my_fifo_t *f);
 
+#if (1) //DEBUG_USB_LOG_EN
+#define		MYFIFO_INIT_IRAM(name,size,n)		/*__attribute__ ((aligned (4)))*/ __attribute__((section(".retention_data"))) u8 name##_b[size * n]__attribute__((aligned(4)))/*={0}*/;\
+												__attribute__((section(".retention_data"))) my_fifo_t name = {size,n,0,0, name##_b}
+#endif
 
-#endif /* COMMON_UTILITY_H_ */
+
+/*LL ACL RX buffer len = maxRxOct + 21, then 16 Byte align*/
+#if 1 // BLE_SRC_TELINK_MESH_EN, enable when use acl buffer to receive adv.
+#define 	CAL_LL_ACL_RX_FIFO_SIZE(maxRxOct)	(max2((((maxRxOct+21) + 15) / 16 *16), 64)) // >= 58 bytes to scan legacy ADV.
+#else
+#define 	CAL_LL_ACL_RX_FIFO_SIZE(maxRxOct)	(((maxRxOct+21) + 15) / 16 *16)
+#endif
+
+
+/*LL ACL TX buffer len = maxTxOct + 10, then 16 Byte align*/
+#define 	CAL_LL_ACL_TX_FIFO_SIZE(maxTxOct)	(((maxTxOct+10) + 15) / 16 *16)
+
+
+#define		ATT_ALLIGN4_DMA_BUFF(n)				(((n + 10) + 3) / 4 * 4)
+
+

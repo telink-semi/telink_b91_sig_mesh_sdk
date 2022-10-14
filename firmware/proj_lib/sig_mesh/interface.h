@@ -1,34 +1,37 @@
 /********************************************************************************************************
- * @file     interface.h 
+ * @file	interface.h
  *
- * @brief    for TLSR chips
+ * @brief	for TLSR chips
  *
- * @author	 telink
- * @date     Sep. 30, 2010
+ * @author	Mesh Group
+ * @date	Sep. 30, 2010
  *
- * @par      Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
- *           
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *          All rights reserved.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
- *           
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *
  *******************************************************************************************************/
 // gerneral defination 
 #include "../../../reference/tl_bulk/lib_file/Gatt_provision.h"
-#include "../../proj_lib/ble/ll/ll.h"
-#include "../../proj_lib/ble/blt_config.h"
-#include "../../vendor/common/user_config.h"
+#include "proj_lib/ble/ll/ll.h"
+#include "proj_lib/ble/blt_config.h"
+#include "vendor/common/user_config.h"
 #include "app_mesh.h"
-#include "../../proj_lib/mesh_crypto/mesh_crypto.h"
-#include "../../proj_lib/pm.h"
-#include "../../vendor/common/app_proxy.h"
-#include "../../vendor/common/app_health.h"
+#include "proj_lib/mesh_crypto/mesh_crypto.h"
+#include "proj_lib/pm.h"
+#include "vendor/common/app_proxy.h"
+#include "vendor/common/app_health.h"
 
 
 /************************************output function *************************************/
@@ -411,7 +414,7 @@ return :
         none
 **************************************************************/
 
-extern void flash_write_page(u32 addr, u32 len, const u8 *buf);
+extern void flash_write_page(u32 addr, u32 len, u8 *buf);
 
 /******************* flash_read_page ****************************
 function :read the cfg file by the way of using adr 
@@ -493,13 +496,13 @@ function : use the para of the provision comfirm  key and the provision random t
 para:
 	p_comfirm: the result of the comfirm value (16 bytes) (out)
 	p_comfirm_key: the pointer of the comfirm key (16 bytes)(in)
-	pro_random: the pointer of the random value (16 bytes)(in)
+	p_random: the pointer of the random value (16 bytes)(in)
 ret: 1  means OK 
 	not use the return 
 notice: it should wait the result of the comfirm value before the function return ,or the flow will be error
 	
 ******************************************************************************/
-extern int mesh_sec_prov_cloud_comfirm(u8* p_comfirm,u8 *p_comfirm_key,u8 *pro_random);
+extern int mesh_sec_prov_cloud_comfirm(u8* p_comfirm,u8 *p_comfirm_key,u8 *p_random);
 /**************************mesh_cloud_dev_comfirm_check***************************
 function : use the para of the comfirm key and the dev random to calculate the device random ,and compare with the random
 		value receive from the device .
@@ -591,8 +594,6 @@ void mesh_heartbeat_cb_data(u16 src, u16 dst,u8 *p_hb);
 
 void remote_prov_capa_sts_cb(u8 max_item,u8 active_scan);
 void remote_prov_scan_report_cb(u8 *par,u8 len);
-u16 get_win32_prov_unicast_adr();
-int set_win32_prov_unicast_adr(u16 adr);
 u8 get_win32_ele_cnt(u8 pid);
 
 
