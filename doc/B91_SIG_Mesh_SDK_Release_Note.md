@@ -1,4 +1,4 @@
-## V3.1.0.0 (Public release)
+## V3.1.0.0
 
 ### Dependency Updates
 
