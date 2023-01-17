@@ -2,7 +2,7 @@
 
 ### Dependency Updates
 
-* N/A
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
 
 ### Bug Fixes
 
@@ -37,7 +37,7 @@
 
 ### Dependency Updates
 
-* N/A
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
 
 ### Bug Fixes
 
