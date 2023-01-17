@@ -27,6 +27,7 @@
 * to avoid compilation errors or loss of functionality, please update all files when upgrading the SDK.
 * for the release note contents of the BLE SDK and Driver SDK mentioned in "Dependency Updates", please refer to the release note files of related SDKs.
 
+### CodeSize
 * Flash and RAM (default target):
 
   - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
