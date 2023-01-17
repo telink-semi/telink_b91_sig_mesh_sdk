@@ -11,7 +11,7 @@
 ### Features
 
 * (Firmware) add software PA function.
-* (Firmware) add SBC algorithm for mesh audio.
+* (Firmware) add SBC as the defualt algorithm for mesh audio, user can select the algorithm by setting CODEC_ALGORITHM_SEL to CODEC_ALGORITHM_SBC or CODEC_ALGORITHM_LC3.
 
 ### Performance Improvements
 
@@ -47,7 +47,7 @@
 ### Features
 
 * (Firmware) 增加 软件PA功能。
-* (Firmware) mesh audio增加SBC算法。
+* (Firmware) 增加SBC作为mesh音频默认算法，用户可通过宏CODEC_ALGORITHM_SEL设置为CODEC_ALGORITHM_SBC/CODEC_ALGORITHM_LC3选择使用SBC/LC3的算法。
 
 ### Performance Improvements
 
