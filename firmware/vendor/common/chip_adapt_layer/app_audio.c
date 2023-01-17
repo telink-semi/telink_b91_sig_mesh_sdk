@@ -37,15 +37,16 @@
 #define AUDIO_LED_INDICATION_TEST_EN	1	// use PWM to indicate audio level.
 #if AUDIO_LED_INDICATION_TEST_EN
 #define AUDIO_LED_INDICATION_IO			PWM_R // if use PWM_B Please connect PWM to TL_PB0 manually.
-#define AUDIO_LED_HIGH_DURATION_US		(30*1000)
-#define AUDIO_LED_LOW_DURATION_US		((MIC_SAMPLES_PER_PACKET * 1000 / 8) - AUDIO_LED_HIGH_DURATION_US)
+#define AUDIO_LED_DURATION				(MIC_SAMPLES_PER_PACKET * 1000 / 8)
+#define AUDIO_LED_HIGH_DURATION_US		(AUDIO_LED_DURATION/2)
+#define AUDIO_LED_LOW_DURATION_US		(AUDIO_LED_DURATION - AUDIO_LED_HIGH_DURATION_US)
 _attribute_bss_dlm_ audio_led_indication_t audio_led_indication;
 
 #define LOG_LED_INDICATION_DEBUG(pbuf,len,format,...)    //LOG_MSG_LIB(TL_LOG_NODE_BASIC,pbuf,len,format,__VA_ARGS__)
 STATIC_ASSERT(AUDIO_LED_HIGH_DURATION_US <= (MIC_SAMPLES_PER_PACKET * 1000 / 8)/2);
 #endif
 
-_attribute_bss_dlm_ tcodec_cfg_t	tcodec;
+static _attribute_bss_dlm_ tcodec_cfg_t	tcodec;
 
 _attribute_bss_dlm_ tadc_int	buff_mic[MIC_FIFO_SIZE + 256]; 		 // some space for echo cancel
 _attribute_bss_dlm_ tcodec_int	buff_playback[PLAY_FIFO_SIZE + 256]; // some space for echo cancel
@@ -55,6 +56,37 @@ _attribute_bss_dlm_ u8	audio_mesh_dec_buff[1024 * 12];		    // 1 channel: 0x29f0
 
 _attribute_bss_dlm_ u32 audio_mesh_tx_tick;
 _attribute_bss_dlm_ audio_mesh_rx_par_t  audio_mesh_rx_par;
+
+#if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+#include "stack/my_mic_api.h"
+#include "my_resample.h"
+
+#define MIC_TX_NUM						1
+
+my_mic_enc_para_t mic_encoder;
+my_mic_dec_para_t mic_decoder[MIC_TX_NUM];
+
+void mic_enc_dec_init()
+{
+    my_mic_enc_init(&mic_encoder, SBC_BLOCK_NUM, SBC_BIT_POOL);
+
+    for(int i=0; i<MIC_TX_NUM; i++) {
+        my_mic_dec_init(&mic_decoder[i], SBC_BLOCK_NUM, SBC_BIT_POOL);
+    }
+}
+
+_attribute_ram_code_
+int mic_audio_encode(s16 *ps, int samples, u8 *pd)
+{
+    return my_mic_enc(&mic_encoder, ps, samples, pd);
+}
+
+_attribute_ram_code_
+int mic_audio_decode(int chn, u8 *ps, int samples, s16 *pd)
+{
+    return my_mic_dec(mic_decoder+chn, ps, samples, pd);
+}
+#endif
 
 void audio_codec_config (audio_channel_wl_mode_e channel_wl,int sample_rate, u32 * speaker_buff, int speaker_size, u32 *mic_buff, int mic_size)
 {
@@ -110,9 +142,15 @@ void app_audio_init ()
 	audio_codec_adc_power_on ();
 	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_EQUAL, 0);
 
+#if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
 	audio_mesh_enc_init (audio_mesh_enc_buff, sizeof(audio_mesh_enc_buff), 48000, 1, LC3_BIT_RATE, 0);		//0: 10ms; 1: 7.5ms
 	audio_mesh_tns_enable (0, 0);
 	audio_mesh_dec_init (audio_mesh_dec_buff, sizeof(audio_mesh_dec_buff), 48000, 1, LC3_BIT_RATE, 0);		//0: 10ms; 1: 7.5ms
+#elif (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+	mic_enc_dec_init();
+	my_resample48to16_init();
+	my_resample16to48_init();
+#endif
 
 	/*
 	for(int i=0;i<PLAY_FIFO_SIZE;i++) {
@@ -158,6 +196,7 @@ void app_check_playback_buffer (int ref, int tollerance)
 	int samples_in_fifo0 = (tcodec.play_wptr - rptr0) & PLAY_FIFO_MAX;
 	if (samples_in_fifo0 < ref - tollerance || samples_in_fifo0 > ref + tollerance)
 	{
+//		LOG_MSG_LIB(TL_LOG_NODE_SDK,0, 0,"***************Reset Play back buffer samples_in_fifo:%d ref:%d tollerance:%d", samples_in_fifo0, ref, tollerance);
 		my_dump_str_u32s (AUDIO_DUMP_EN, "MIC - Reset Play back buffer", 0, samples_in_fifo0, ref, tollerance);
 		tcodec.play_wptr = (rptr0 + ref) & PLAY_FIFO_MAX;
 	}
@@ -316,11 +355,18 @@ void app_audio_task()
 		app_sync_mic_sample(MIC_SAMPLES_PER_PACKET + MIC_TOLLERANCE_THRES, MIC_TOLLERANCE_THRES);	// allow 30ms tollerance
 		
 		tcodec_get_mic_data(pcm, MIC_SAMPLES_PER_PACKET);
+#if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
 		int leni = audio_mesh_enc (0, pcm, MIC_SAMPLES_PER_PACKET, vd_audio_data.data+enc_offset);	// cost about 3ms in 96M clock
+#elif(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+		tadc_int data[(MIC_SAMPLES_PER_PACKET+2)/3];
+		int len = my_resample48to16_data((int *)pcm, MIC_SAMPLES_PER_PACKET, (int *)data, 0);
+		int leni = mic_audio_encode(data, len, vd_audio_data.data+enc_offset);
+#endif
 
 		enc_offset += leni;
 		if(enc_offset >= (MIC_NUM_MESH_TX*leni)){		
 			vd_cmd_audio_data(ADR_ALL_NODES, 0, (u8 *)&vd_audio_data, OFFSETOF(vd_audio_t, data) + enc_offset); // cost about 16.5ms in 96M clock
+			vd_audio_data.index++;
 			enc_offset = 0;			
 		}
 	}
@@ -376,14 +422,20 @@ int cb_vd_async_audio_data(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par)
 	u8 delta = p_audio->index - audio_mesh_rx_par.index_last;
 	if(delta>1){
 		audio_mesh_rx_par.miss_cnt += (delta-1);		
-		LOG_MSG_LIB(TL_LOG_NODE_SDK,0, 0,"audio data missing cnt:%d",  audio_mesh_rx_par.miss_cnt);
+//		LOG_MSG_LIB(TL_LOG_NODE_SDK,0, 0,"***************audio data missing cnt:%d",  audio_mesh_rx_par.miss_cnt);
 	}	
 	audio_mesh_rx_par.index_last = p_audio->index;	
-	
+//	LOG_MSG_LIB(TL_LOG_NODE_SDK,0, 0,"audio sno:0x%x idx:%d", cb_par->p_nw->sno[0]+(cb_par->p_nw->sno[1]<<8)+(cb_par->p_nw->sno[2]<<16), p_audio->index);
 	tadc_int pcm[MIC_SAMPLES_PER_PACKET];
 	app_check_playback_buffer(MIC_SAMPLES_PER_PACKET + PLAY_TOLLERANCE_THRES, PLAY_TOLLERANCE_THRES);
 	for(int num=0; num<MIC_NUM_MESH_TX; num++){	
-		audio_mesh_dec (0, p_audio->data+num*LC3_ENC_SIZE, LC3_ENC_SIZE, pcm, 0);
+#if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
+		audio_mesh_dec (0, p_audio->data+num*MIC_ENC_SIZE, MIC_ENC_SIZE, pcm, 0);
+#elif(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+		tadc_int data[MIC_SAMPLES_PER_PACKET];
+		int len_pcm = mic_audio_decode (0, p_audio->data+num*MIC_ENC_SIZE, SBC_FRAME_SAMPLES, data);
+		my_resample16to48_data((int *)data, len_pcm, (int *)pcm, 0);
+#endif
 		#if AUDIO_LED_INDICATION_TEST_EN
 		audio_led_par_t *par = &audio_led_indication.unit[num];
 		pcm_2_playback(pcm, MIC_SAMPLES_PER_PACKET, &par->avg, &par->max);
@@ -406,11 +458,11 @@ int cb_vd_async_audio_data(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par)
 
 int cb_vd_group_g_mic_tx_req(u8 *par, int par_len, mesh_cb_fun_par_t *cb_par)
 {
+	app_audio_rx_st_clear();
 	if(is_own_ele(cb_par->adr_src)){
 		return 0;
 	}
 	app_audio_mic_onoff(0);
-	app_audio_rx_st_clear();
 	app_audio_rx_st_fresh(cb_par->adr_src);
 	return 0;
 }

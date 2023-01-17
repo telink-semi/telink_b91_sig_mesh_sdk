@@ -886,6 +886,15 @@ audio_i2s_clk_config_t   audio_i2s_16k_config=
 	.i2s_lrclk_dac_div=125, //dac sample rate =2M/125 = 16k
 };
 
+audio_i2s_clk_config_t   audio_i2s_24k_config=
+{
+	.i2s_clk_step=1,        //set i2s clk step
+	.i2s_clk_mode=8,        //set i2s clk mode,set i2s clk=192M*(1/8)= 24M
+	.i2s_bclk_div=1,        //24M/(2*1) = 12M bclk
+	.i2s_lrclk_adc_div=500, //adc sample rate =12M/500 = 24k
+	.i2s_lrclk_dac_div=500, //dac sample rate =12M/500 = 24k
+};
+
 audio_i2s_clk_config_t   audio_i2s_32k_config=
 {
 	.i2s_clk_step=1,        //set i2s clk step
@@ -1020,6 +1029,10 @@ _attribute_ram_code_sec_noinline_ void  audio_set_i2s_clock (audio_sample_rate_e
 			clk_config_ptr=&audio_i2s_16k_config;
 		break;
 
+		case AUDIO_24K:
+			clk_config_ptr=&audio_i2s_24k_config;
+		break;
+		
 		case AUDIO_32K:
 			clk_config_ptr=&audio_i2s_32k_config;
 		break;

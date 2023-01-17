@@ -55,7 +55,7 @@
 #endif
 
 #ifndef PLAY_FIFO_SIZE
-#define	PLAY_FIFO_SIZE			4096
+#define	PLAY_FIFO_SIZE			8192  // for sample rate 16k or above
 #endif
 
 #ifndef PLAY_BLOCK_SIZE
@@ -99,7 +99,7 @@ extern u32 audio_mesh_tx_tick;
 typedef struct{
 	u8 index;
 	u8 rsv[2];
-	u8 data[MIC_NUM_MESH_TX*LC3_ENC_SIZE];
+	u8 data[MIC_NUM_MESH_TX*MIC_ENC_SIZE];
 }vd_audio_t;
 
 typedef struct{
@@ -114,7 +114,6 @@ typedef struct{
 }audio_led_indication_t;
 #endif
 
-extern tcodec_cfg_t	tcodec;
 
 
 void app_audio_init ();

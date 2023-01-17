@@ -102,6 +102,28 @@ static inline void pwm_start(pwm_id_e id)
 	}
 }
 
+// uart
+#define UART_DMA_CHANNEL_RX  	DMA2
+#define UART_DMA_CHANNEL_TX  	DMA3
+#define UART_NUM_GET(pin)		(((((int)pin==UART0_RX_PA4)||((int)pin==UART0_RX_PB3)||((int)pin==UART0_RX_PD3))|| \
+									(((int)pin==UART0_TX_PA3)||((int)pin==UART0_TX_PB2)||((int)pin==UART0_TX_PD2))) ? UART0 : UART1)
+#define UART_IRQ_GET(pin)		((UART_NUM_GET(pin) == UART0) ? IRQ19_UART0 : IRQ18_UART1)
+
+typedef struct{
+	unsigned int len;  // must be 4 byte align 
+	unsigned char data[1];
+}uart_data_t;
+
+extern const uart_num_e UART_RX_NUM;
+extern const uart_num_e UART_TX_NUM;
+extern const irq_source_e UART_IRQ_NUM;
+
+void uart_tx_busy_timeout_poll();
+unsigned char uart_tx_is_busy_dma_tick();
+unsigned char uart_Send_dma_with_busy_hadle(unsigned char* data, unsigned int len);
+unsigned char uart_ErrorCLR(void);
+void irq_uart_handle_fifo();
+void uart_drv_init_B91m();
 
 typedef struct {
 	u8 (*rx_aux_adv)(u8 * raw_pkt, u8 * new_pkt);

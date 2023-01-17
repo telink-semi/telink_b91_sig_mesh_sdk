@@ -477,6 +477,9 @@ int factory_reset(){
 #endif
 
 void kick_out(int led_en){
+#if AUDIO_MESH_EN
+	vd_cmd_mic_tx_req(ele_adr_primary);
+#endif
 	#if !WIN32
 	// add terminate cmd 
 	if(bls_ll_isConnectState()){

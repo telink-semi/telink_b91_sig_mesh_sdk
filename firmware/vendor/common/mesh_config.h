@@ -982,15 +982,33 @@ extern "C" {
 	#if __PROJECT_MESH__ || __PROJECT_MESH_PRO__ 	// only for B91 mesh and gateway project
 #define AUDIO_MESH_EN					0
 		#if AUDIO_MESH_EN
+#define CODEC_ALGORITHM_SBC             0
+#define CODEC_ALGORITHM_LC3	            1
+#define CODEC_ALGORITHM_SEL 			CODEC_ALGORITHM_SBC
+
+		#if(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+#define AUDIO_SAMPLE_RATE				AUDIO_24K// don't change
+#define MIC_SAMPLES_PER_PACKET      	360		
+#define SBC_FRAME_SAMPLES          		(MIC_SAMPLES_PER_PACKET/3)
+#define SBC_BIT_POOL                    20 // 26:compression ratio is 4.53. 20:compression ratio is 5.71. 17:compression ratio is 6.67.  12:compression ratio is 8.89.
+
+#define SBC_BLOCK_NUM                   (SBC_FRAME_SAMPLES / 8)
+#define SBC_FRAME_SIZE                  ((SBC_BIT_POOL * SBC_BLOCK_NUM + 7) / 8 + 4) // for 8k16bit the Compression ratio is SBC_FRAME_SAMPLES*2/SBC_FRAME_SIZE = 8.89
+#define MIC_ENC_SIZE					SBC_FRAME_SIZE
+		#elif(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
 #define AUDIO_SAMPLE_RATE				AUDIO_8K
 #define MIC_SAMPLES_PER_PACKET      	480 // can't change
-#define MIC_SAMPLES_TIME_US				(MIC_SAMPLES_PER_PACKET*1000 / ((AUDIO_SAMPLE_RATE==AUDIO_8K)?8:16))
-#define MIC_TOLLERANCE_THRES 			240
-#define PLAY_TOLLERANCE_THRES 			(2*MIC_SAMPLES_PER_PACKET)
 #define LC3_BIT_RATE					58400 // base on 480 mic sample which is 10ms frame of 48k16bit // for 8k16bit is (58400/(48/8)) = 9733, then Compression ratio is 13.1.
 #define LC3_ENC_SIZE					((LC3_BIT_RATE*(MIC_SAMPLES_PER_PACKET/120)+3199)/3200)
-#define MIC_NUM_MESH_TX					((ACCESS_NO_MIC_LEN_MAX_UNSEG + CONST_DELTA_EXTEND_AND_NORMAL - 3)/LC3_ENC_SIZE)
+#define MIC_ENC_SIZE					LC3_ENC_SIZE
+		#endif
+		
+
 #define AUDIO_RX_TIMEOUT				1000	//unit:ms
+#define MIC_SAMPLES_TIME_US				(MIC_SAMPLES_PER_PACKET*1000 / ((AUDIO_SAMPLE_RATE==AUDIO_8K)?8:((AUDIO_SAMPLE_RATE==AUDIO_16K)?16:24)))
+#define MIC_NUM_MESH_TX					((ACCESS_NO_MIC_LEN_MAX_UNSEG + CONST_DELTA_EXTEND_AND_NORMAL - 3 - 3)/MIC_ENC_SIZE) // 3:vendor opcode size, 3:OFFSETOF(vd_audio_t, data)
+#define MIC_TOLLERANCE_THRES 			(MIC_SAMPLES_PER_PACKET*MIC_NUM_MESH_TX/2)
+#define PLAY_TOLLERANCE_THRES 			(((TRANSMIT_CNT_DEF+1)*(TRANSMIT_INVL_STEPS_DEF+1+1)*10) * ((AUDIO_SAMPLE_RATE==AUDIO_8K)?8:((AUDIO_SAMPLE_RATE==AUDIO_16K)?16:24)))
 		#endif
 	#endif
 #endif
