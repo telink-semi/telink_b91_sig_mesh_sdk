@@ -1,3 +1,66 @@
+## V3.1.0.1
+
+### Dependency Updates
+
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
+
+### Bug Fixes
+
+* N/A
+
+### Features
+
+* N/A
+
+### Performance Improvements
+
+* delete some unused APIs which name has typo.
+
+### BREAKING CHANGES
+
+* N/A
+
+### Notes
+
+* debugging tools: such as sig_mesh_tool.exe and Android apk, please be sure to use the tools of this release.
+* to avoid compilation errors or loss of functionality, please update all files when upgrading the SDK.
+* for the release note contents of the BLE SDK and Driver SDK mentioned in "Dependency Updates", please refer to the release note files of related SDKs.
+
+* Flash and RAM (default target):
+
+  - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+
+
+### Dependency Updates
+
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
+
+### Bug Fixes
+
+* N/A
+
+### Features
+
+* N/A
+
+### Performance Improvements
+
+* 删除一些未正确拼写名称且未使用的接口。
+
+### BREAKING CHANGES
+
+* N/A
+
+### Notes
+
+* 调试工具：比如sig_mesh_tool.exe和APP 安装包文件，请务必使用本次release的版本。
+* 为避免编译错误以及功能丢失，升级SDK时，请确认更新全部SDK文件。
+* “Dependency Updates”里面提到的BLE SDK和Driver SDK的release note内容，请查阅对应SDK的release note文件。
+
+
 ## V3.1.0.0
 
 ### Dependency Updates
