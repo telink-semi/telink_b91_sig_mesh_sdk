@@ -471,11 +471,7 @@ extern const u8	const_tbl_scanRsp [9] ;
 #define TRANSMIT_CNT_DEF		(7)
 #define TRANSMIT_INVL_STEPS_DEF	(0)
 #elif AUDIO_MESH_EN
-	#if(SBC_BIT_POOL > 20)
-#define TRANSMIT_CNT_DEF		(2)
-	#else
 #define TRANSMIT_CNT_DEF		(3)
-	#endif
 #define TRANSMIT_INVL_STEPS_DEF	(0)
 #else
 #define TRANSMIT_CNT_DEF		(5)

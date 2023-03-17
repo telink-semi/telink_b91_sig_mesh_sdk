@@ -47,7 +47,7 @@
 #include "directed_forwarding.h"
 
 #if (HCI_ACCESS==HCI_USE_UART)
-#include "drivers.h"
+#include "proj/drivers/uart.h"
 #endif
 
 
