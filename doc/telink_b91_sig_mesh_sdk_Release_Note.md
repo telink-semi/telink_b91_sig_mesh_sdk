@@ -24,6 +24,8 @@
 
 * updated from version 3.1.0.0.
 
+### CodeSize
+
 * Flash and RAM (default target):
 
   - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
