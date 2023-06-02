@@ -477,6 +477,9 @@ int factory_reset(){
 #endif
 
 void kick_out(int led_en){
+#if AUDIO_MESH_EN
+	vd_cmd_mic_tx_req(ele_adr_primary); // just to clear play buffer of itself(no sending RF packet), so that no noise during 6 seconds of led flash.
+#endif
 	#if !WIN32
 	// add terminate cmd 
 	if(bls_ll_isConnectState()){

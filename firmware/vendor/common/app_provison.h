@@ -538,13 +538,13 @@ typedef  enum{
 
 typedef struct{
 	u8  net_work_key[16];
-	u16  key_index;
+	u16  key_index;			// little endian
 	union{
 		mesh_ctl_fri_update_flag_t prov_flags;
 		u8  flags;
 	};
-	u8  iv_index[4];
-	u16  unicast_address;
+	u8  iv_index[4]; 		// big endian
+	u16  unicast_address;	// little endian
 }provison_net_info_str;
 
 typedef struct{

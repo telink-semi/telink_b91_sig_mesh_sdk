@@ -44,6 +44,9 @@
 #include "user_ali_time.h"
 #endif
 
+void pair_provision_proc();
+
+
 #ifndef __PROJECT_MESH_SWITCH__
 #define __PROJECT_MESH_SWITCH__     0
 #endif
@@ -258,6 +261,9 @@ void system_time_run(){
 	
 	#if FAST_PROVISION_ENABLE
 		mesh_fast_prov_proc();
+	#endif
+	#if PAIR_PROVISION_ENABLE
+		pair_provision_proc();
 	#endif
 	#if ONLINE_STATUS_EN
         online_st_proc();

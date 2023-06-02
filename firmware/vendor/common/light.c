@@ -1561,6 +1561,10 @@ _USER_CAN_REDEFINE_ void rf_link_light_event_callback (u8 status)
 	}else if(status == LGT_CMD_DUAL_MODE_MESH){
 		cfg_led_event(DUAL_MODE_WITH_TLK_MESH_EN ? LED_EVENT_FLASH_2HZ_2T : LED_EVENT_FLASH_2HZ_1T);
 #endif
+#if PAIR_PROVISION_ENABLE
+	}else if(status == PROV_START_LED_CMD){
+		cfg_led_event(LED_EVENT_FLASH_4HZ_3T);
+#endif
 	}
 }
 
