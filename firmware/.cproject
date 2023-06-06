@@ -182,7 +182,7 @@
 								<option defaultValue="-O0" id="nds.c.link.option.optimization.level.942579472" name="Optimization Level" superClass="nds.c.link.option.optimization.level" value="-O2" valueType="string"/>
 								<option defaultValue="true" id="nds32le-elf-mculib-v5f.c.link.option.noshared.base.1434072993" name="No shared libraries (-static)" superClass="nds32le-elf-mculib-v5f.c.link.option.noshared.base" valueType="boolean"/>
 								<option id="nds.c.link.option.LTO.1577288066" name="Link Time Optimization (-flto)" superClass="nds.c.link.option.LTO" value="true" valueType="boolean"/>
-								<option id="nds.c.link.option.other.duplacitecompiler.1366792490" name="DuplaciteComplierOption" superClass="nds.c.link.option.other.duplacitecompiler" value="-g3 -mcpu=d25f -ffunction-sections -fdata-sections -fmessage-length=0 -fno-builtin -fomit-frame-pointer -fno-strict-aliasing -fshort-wchar -fuse-ld=bfd -fpack-struct " valueType="string"/>
+								<option id="nds.c.link.option.other.duplacitecompiler.1366792490" name="DuplaciteComplierOption" superClass="nds.c.link.option.other.duplacitecompiler" value="-g3 -mcpu=d25f -ffunction-sections -fdata-sections -mext-dsp -fmessage-length=0 -fno-builtin -fomit-frame-pointer -fno-strict-aliasing -fshort-wchar -fuse-ld=bfd -fpack-struct " valueType="string"/>
 								<option id="nds.c.link.option.removesections.1201364381" name="Remove unused sections (-ffunction-sections or -fdata-sections)" superClass="nds.c.link.option.removesections" value="true" valueType="boolean"/>
 								<option defaultValue="" id="nds.c.link.option.ldscript.1075710951" name="Linker Script (-T)" superClass="nds.c.link.option.ldscript" value="../boot.link" valueType="string"/>
 								<option id="nds.c.link.option.nostart.378232912" name="Do not use standard start files (-nostartfiles)" superClass="nds.c.link.option.nostart" value="true" valueType="boolean"/>
@@ -194,11 +194,14 @@
 									<listOptionValue builtIn="false" value="sig_mesh_prov_B91"/>
 									<listOptionValue builtIn="false" value="firmware_encrypt"/>
 									<listOptionValue builtIn="false" value="dsp"/>
+									<listOptionValue builtIn="false" value="aid_awaken_switch_lumin_v2"/>
 									<listOptionValue builtIn="false" value="B91_audio_mesh_codec"/>
+									<listOptionValue builtIn="false" value="speex_120_16k"/>
 								</option>
 								<option id="nds.c.link.option.paths.89637350" name="Library search path (-L)" superClass="nds.c.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/proj_lib}&quot;"/>
 								</option>
+								<option id="nds.c.linker.option.apply_hw_dsp.1045022031" name="Apply HW DSP" superClass="nds.c.linker.option.apply_hw_dsp" value="true" valueType="boolean"/>
 								<inputType id="tool.nds.c.linker.input.835733504" superClass="tool.nds.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -460,7 +463,9 @@
 		<configuration configurationName="9518_UART1_DEMO">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>
-		<configuration configurationName="B91_mesh_gw"/>
+		<configuration configurationName="B91_mesh_gw">
+			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
+		</configuration>
 		<configuration configurationName="B91_master_kma_dongle">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>
@@ -476,6 +481,7 @@
 		<configuration configurationName="9518_HSPI_Demo">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>
+		<configuration configurationName="B91_mesh_switch"/>
 		<configuration configurationName="B91_ble_sample">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>
@@ -558,6 +564,7 @@
 		<configuration configurationName="9518_TIMER_DEMO">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>
+		<configuration configurationName="B91_mesh_LPN"/>
 		<configuration configurationName="GPIO_DEMO">
 			<resource resourceType="PROJECT" workspacePath="/Eagle_Ble_Src"/>
 		</configuration>

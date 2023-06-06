@@ -412,7 +412,7 @@ void proc_ui_audio()
 	st_sw2_last = st_sw2;
 }
 
-STATIC_ASSERT((ACCESS_NO_MIC_LEN_MAX_UNSEG+CONST_DELTA_EXTEND_AND_NORMAL) >= (sizeof(vd_audio_t)+OP_TYPE_VENDOR));
+STATIC_ASSERT((ACCESS_NO_MIC_LEN_MAX_UNSEG+CONST_DELTA_EXTEND_AND_NORMAL) >= (sizeof(vd_audio_t)+OP_TYPE_VENDOR)); // (225 >= x +3)
 _attribute_bss_dlm_ u8 audio_mic_index = 0;
 _attribute_bss_dlm_ vd_audio_t vd_audio_data;
 

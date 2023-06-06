@@ -116,12 +116,16 @@ SECTIONS
 	PROVIDE (_DLM_DATA_VMA_START = ADDR(.dlm_data));
 	PROVIDE (_DLM_DATA_LMA_START = LOADADDR(.dlm_data));
 	PROVIDE (_DLM_DATA_VMA_END = .); 
-	PROVIDE (BIN_SIZE = LOADADDR(.dlm_data) + SIZEOF(.dlm_data) - BIN_BEGIN);
 	
 	. = ALIGN(8);
 	PROVIDE (_DLM_BSS_VMA_START = .);
 	.dlm_bss 	(NOLOAD)	: { KEEP(*(.dlm_bss )) }
 	PROVIDE (_DLM_BSS_VMA_END = .); 
+	
+	.sdk_version  	: AT(LOADADDR (.dlm_data) + SIZEOF (.dlm_data)) /* no need alignof, because no load */
+		{ KEEP(*(.sdk_version )) }
+		
+	PROVIDE (BIN_SIZE = LOADADDR(.sdk_version) + SIZEOF(.sdk_version) - BIN_BEGIN);
 	
 	. = ALIGN(8);
 	/* end is the starting address of the heap, the heap grows upward */

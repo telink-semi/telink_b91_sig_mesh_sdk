@@ -187,7 +187,7 @@ extern "C" {
 #define RF_SEND_AUDIO_SAMPLE_RATE_SEL	RF_SEND_AUDIO_SAMPLE_RATE_8K 	// Supports 16k and 8k
 #define MIC_SAMPLES_PER_PACKET      	480 // can't change
 #define LC3_BIT_RATE					58400 // base on 480 mic sample which is 10ms frame of 48k16bit // for 8k16bit is (58400/(48/8)) = 9733, then Compression ratio is 13.1.
-#define LC3_ENC_SIZE					((LC3_BIT_RATE*(MIC_SAMPLES_PER_PACKET/120)+3199)/3200)
+#define LC3_ENC_SIZE					((LC3_BIT_RATE*(MIC_SAMPLES_PER_PACKET/120)+3199)/3200) // default is 73
 #define MIC_ENC_SIZE					LC3_ENC_SIZE
 		#endif
 		
