@@ -16,7 +16,7 @@
 
 ### Performance Improvements
 
-* (Firmware) .
+* N/A
 
 ### BREAKING CHANGES
 
@@ -52,7 +52,7 @@
 
 ### Performance Improvements
 
-* (Firmware) 。
+* N/A
 
 ### BREAKING CHANGES
 
