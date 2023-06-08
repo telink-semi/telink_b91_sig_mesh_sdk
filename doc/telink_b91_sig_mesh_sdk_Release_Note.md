@@ -1,3 +1,71 @@
+## V3.1.0.3
+
+### Dependency Updates
+
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
+
+### Bug Fixes
+
+* N/A
+
+### Features
+
+* (Firmware) Mesh Audio: add ENC (Environmental Noise Cancellation).
+* (Firmware) Mesh Audio: support multiple nodes speaking simultaneously. enable AUDIO_MESH_MULTY_NODES_TX_EN for this function, disabled as default.
+* (Firmware) Mesh Audio: support provision between nodes without an App and gateway. enable PAIR_PROVISION_ENABLE for this function, disabled as default.
+
+### Performance Improvements
+
+* (Firmware) .
+
+### BREAKING CHANGES
+
+* N/A
+
+### Notes
+
+* debugging tools: such as sig_mesh_tool.exe and Android apk, please be sure to use the tools of this release.
+* to avoid compilation errors or loss of functionality, please update all files when upgrading the SDK.
+* for the release note contents of the BLE SDK and Driver SDK mentioned in "Dependency Updates", please refer to the release note files of related SDKs.
+
+* Flash and RAM (default target):
+
+  - 8258_mesh:_________Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_LPN:____Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_gw:_____Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
+  - 8258_mesh_switch:__Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
+
+
+### Dependency Updates
+
+* telink_b91m_ble_single_connection_sdk_v3.3.0.0
+
+### Bug Fixes
+
+* N/A
+
+### Features
+
+* (Firmware) Mesh Audio功能：增加 ENC 环境噪音降噪功能。(Environmental Noise Cancellation,环境降噪技术)。
+* (Firmware) Mesh Audio功能：支持多节点同时讲话，打开 AUDIO_MESH_MULTY_NODES_TX_EN 即可，默认关闭。
+* (Firmware) Mesh Audio功能：支持在没有App和网关情况下, 节点和节点之间进行配对组网的功能。打开 PAIR_PROVISION_ENABLE 即可，默认关闭。
+
+### Performance Improvements
+
+* (Firmware) 。
+
+### BREAKING CHANGES
+
+* N/A
+
+### Notes
+
+* 调试工具：比如sig_mesh_tool.exe和APP 安装包文件，请务必使用本次release的版本。
+* 为避免编译错误以及功能丢失，升级SDK时，请确认更新全部SDK文件。
+* “Dependency Updates”里面提到的BLE SDK和Driver SDK的release note内容，请查阅对应SDK的release note文件。
+
+
+
 ## V3.1.0.2
 
 ### Dependency Updates
