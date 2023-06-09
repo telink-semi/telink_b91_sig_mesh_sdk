@@ -31,10 +31,10 @@
 
 * Flash and RAM (default target):
 
-  - 8258_mesh:_________Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_LPN:____Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_gw:_____Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_switch:__Flash ？ KB, I-RAM (？ KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_LPN:____Flash 114 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
 
 
 ### Dependency Updates
@@ -98,10 +98,10 @@
 
 * Flash and RAM (default target):
 
-  - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
 
 
 ### Dependency Updates
@@ -160,10 +160,10 @@
 
 * Flash and RAM (default target):
 
-  - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
 
 
 ### Dependency Updates
@@ -227,10 +227,10 @@
 
 * Flash and RAM (default target):
 
-  - 8258_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
-  - 8258_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh:_________Flash 120 KB, I-RAM (38 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_LPN:____Flash 113 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_gw:_____Flash 126 KB, I-RAM (45 KB + 4K stack), D-RAM (0 KB).
+  - B91_mesh_switch:__Flash 108 KB, I-RAM (33 KB + 4K stack), D-RAM (0 KB).
 
 
 ### Dependency Updates
