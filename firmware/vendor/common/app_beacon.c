@@ -38,6 +38,8 @@
 
 int mesh_bear_tx_beacon_adv_channel_only(u8 *bear, u8 trans_par_val)
 {
+	trans_par_val = 0; // b85 has set trans_par_val to be 0.
+
 	#if FEATURE_RELAY_EN	// use relay buffer should be better
 	mesh_adv_fifo_relay.num = mesh_adv_fifo_relay.num;	// will be optimized, just for sure that relay buffer is existed.
 	mesh_cmd_bear_t *p_bear = (mesh_cmd_bear_t *)bear;

@@ -32,6 +32,8 @@
 #include "vendor/common/pair_provision.h"
 #include "app_audio.h"
 #include <math.h>
+#include "drivers/B91/audio.h"
+
 
 #if AUDIO_MESH_EN
 #define AUDIO_DUMP_EN                	1
@@ -51,7 +53,11 @@ STATIC_ASSERT(AUDIO_LED_HIGH_DURATION_US <= (MIC_SAMPLES_PER_PACKET * 1000 / 8)/
 #endif
 
 #if(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_SBC)
+	#if (RF_SEND_AUDIO_SAMPLE_RATE_SEL == RF_SEND_AUDIO_SAMPLE_RATE_8K)
 #define AUDIO_SAMPLE_RATE				AUDIO_16K // don't change // means audio ADC sample rate and audio speaker sample rate.
+	#else
+#error not support this sample rate, because RF audio message will be too much.
+	#endif
 #elif(CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
 	#if (RF_SEND_AUDIO_SAMPLE_RATE_SEL == RF_SEND_AUDIO_SAMPLE_RATE_8K)
 #define AUDIO_SAMPLE_RATE				AUDIO_8K
@@ -128,16 +134,19 @@ int mic_audio_decode(int chn, u8 *ps, int samples, s16 *pd)
 void audio_codec_config (audio_channel_wl_mode_e channel_wl,int sample_rate, u32 * speaker_buff, int speaker_size, u32 *mic_buff, int mic_size)
 {
 //	analog_write_reg8 (0x02, 0xc4);		//flash 2.8V trim   codec ?
+
+	audio_i2s_invert_config_t audio_mesh_audio_i2s_invert_config={
+		.i2s_lr_clk_invert_select=I2S_LR_CLK_INVERT_DIS,
+		.i2s_data_invert_select=I2S_DATA_INVERT_DIS,
+	};
+
+	#if (AUDIO_I2S_EN == 0)
 	audio_set_codec_supply(CODEC_2P8V);
 
 	audio_set_codec_clk(1, 16);////from ppl 192/16=12M
 
 	audio_mux_config(CODEC_I2S, BIT_16_MONO, BIT_16_MONO, BIT_16_MONO);
 
-	audio_i2s_invert_config_t audio_mesh_audio_i2s_invert_config={
-		.i2s_lr_clk_invert_select=I2S_LR_CLK_INVERT_DIS,
-		.i2s_data_invert_select=I2S_DATA_INVERT_DIS,
-	};
 	audio_i2s_config(I2S_I2S_MODE, I2S_BIT_16_DATA, I2S_M_CODEC_S,&audio_mesh_audio_i2s_invert_config);
 
 	audio_set_i2s_clock(sample_rate, AUDIO_RATE_LT_L1, 0);
@@ -151,6 +160,14 @@ void audio_codec_config (audio_channel_wl_mode_e channel_wl,int sample_rate, u32
 	audio_codec_dac_config(I2S_M_CODEC_S, sample_rate, CODEC_BIT_16_DATA, MCU_WREG);
 
 	audio_codec_adc_config(I2S_M_CODEC_S, AMIC_IN_TO_BUF, sample_rate, CODEC_BIT_16_DATA,MCU_WREG);
+	#else
+	audio_i2s_set_pin();
+	audio_set_chn_wl(channel_wl);
+	audio_mux_config(IO_I2S,BIT_16_MONO,BIT_16_MONO,BIT_16_MONO);
+	audio_i2s_config(I2S_I2S_MODE, I2S_BIT_16_DATA, I2S_M_CODEC_S,&audio_mesh_audio_i2s_invert_config);
+	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_LT_L1, 0);
+	audio_clk_en(1,1);
+	#endif
 
 	audio_data_fifo0_path_sel(I2S_DATA_IN_FIFO,I2S_OUT);
 
@@ -176,7 +193,13 @@ void app_audio_init ()
 	tcodec.play_wptr = tcodec.play_rptr = 0;
 
 	audio_codec_config (MONO_BIT_16, tcodec.sample_rate, (u32 *)buff_playback, PLAY_FIFO_SIZE_BYTE , (u32 *)buff_mic, MIC_FIFO_SIZE_BYTE);
+
+	#if AUDIO_I2S_EN
+	gpio_input_en(I2S_BCK_PC3|I2S_DAC_LR_PC6|I2S_DAC_DAT_PC7|I2S_ADC_LR_PC4|I2S_ADC_DAT_PC5);		//IIS¨°y??
+	#else
 	audio_codec_adc_power_on ();
+	#endif
+	
 	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_EQUAL, 0);
 
 #if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)

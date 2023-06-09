@@ -13,6 +13,7 @@
 * (Firmware) Mesh Audio: add ENC (Environmental Noise Cancellation).
 * (Firmware) Mesh Audio: support multiple nodes speaking simultaneously. enable AUDIO_MESH_MULTY_NODES_TX_EN for this function, disabled as default.
 * (Firmware) Mesh Audio: support provision between nodes without an App and gateway. enable PAIR_PROVISION_ENABLE for this function, disabled as default.
+* (Firmware) Mesh Audio: support I2S. enable AUDIO_I2S_EN for this function, disabled as default. if enable I2S, AUDIO_SAMPLE_RATE only support 8k now. next version will support 16K.
 
 ### Performance Improvements
 
@@ -49,6 +50,7 @@
 * (Firmware) Mesh Audio功能：增加 ENC 环境噪音降噪功能。(Environmental Noise Cancellation,环境降噪技术)。
 * (Firmware) Mesh Audio功能：支持多节点同时讲话，打开 AUDIO_MESH_MULTY_NODES_TX_EN 即可，默认关闭。
 * (Firmware) Mesh Audio功能：支持在没有App和网关情况下, 节点和节点之间进行配对组网的功能。打开 PAIR_PROVISION_ENABLE 即可，默认关闭。
+* (Firmware) Mesh Audio功能：支持I2S。打开 AUDIO_I2S_EN 即可，默认关闭。使能AUDIO_I2S_EN后，AUDIO_SAMPLE_RATE 目前仅支持 8k模式, 下个版本再支持 16k.
 
 ### Performance Improvements
 

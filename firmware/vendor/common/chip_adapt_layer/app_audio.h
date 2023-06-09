@@ -39,6 +39,7 @@
 #define CODEC_DAC_MONO_MODE         1
 #define CODEC_ADC_MONO_MODE         1
 
+
 #if		CODEC_DAC_MONO_MODE
 	typedef	signed short 	tcodec_int;
 #else
@@ -173,6 +174,8 @@ static inline int is_audio_mesh_tx_working()
 	return (0 != audio_mesh_tx_tick);
 }
 
+extern audio_i2s_codec_config_t audio_i2s_codec_config;
+
 void app_audio_init ();
 void app_audio_task();
 void app_audio_mic_onoff(u8 on);
@@ -192,5 +195,7 @@ u8 audio_mesh_get_tx_nodes_cnt();
 int app_audio_is_valid_key_pressed(void);
 int audio_mesh_is_reduce_relay_random();
 u8 audio_mesh_get_tx_retransmit_cnt();
+void audio_i2s_set_pin(void);
+void audio_set_chn_wl(audio_channel_wl_mode_e chn_wl);
 
 

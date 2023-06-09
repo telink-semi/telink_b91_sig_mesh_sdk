@@ -167,6 +167,7 @@ extern "C" {
 		#endif
 
 #define PAIR_PROVISION_ENABLE		 	0 	// provision without app and gateway. // usually for audio mesh
+#define AUDIO_I2S_EN					0   // The default is analog sampling, On means using I2S sampling
 
 /**
  * @brief 		enum value: sample rate in RF packet
@@ -193,7 +194,7 @@ extern "C" {
 		
 #define AUDIO_RX_TIMEOUT				1000	//unit:ms
 
-#define MESH_AUDIO_RESAMPLE_EN			(RF_SEND_AUDIO_SAMPLE_RATE_SEL != RF_SEND_AUDIO_SAMPLE_RATE_16K)
+#define MESH_AUDIO_RESAMPLE_EN			(RF_SEND_AUDIO_SAMPLE_RATE_SEL != RF_SEND_AUDIO_SAMPLE_RATE_16K)	// because SPEEX_SAMPLERATE of ENC is fixed 16k.
 #define MIC_NUM_MESH_TX					((ACCESS_NO_MIC_LEN_MAX_UNSEG + CONST_DELTA_EXTEND_AND_NORMAL - 3 - 3)/MIC_ENC_SIZE) // MIC_NUM_MESH_TX is 3 for LC3 // param details: 3:vendor opcode size, 3:OFFSETOF(vd_audio_t, data) 
 		#endif
 	#endif
