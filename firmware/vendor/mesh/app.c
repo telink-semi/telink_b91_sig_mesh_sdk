@@ -904,7 +904,7 @@ _attribute_no_inline_ void user_init() // must add no inline, or it will be inli
     light_hw_timer1_config();
 #endif
 #if IRQ_GPIO_ENABLE
-	gpio_set_interrupt_init(SW1_GPIO, PM_PIN_PULLUP_1M, 1, FLD_IRQ_GPIO_EN);
+	gpio_set_interrupt_init(IRQ_GPIO_SELECT, PM_PIN_PULLUP_10K, INTR_FALLING_EDGE, IRQ25_GPIO); // An interrupt is triggered when PD2 is low
 #endif
 #if (BLT_SOFTWARE_TIMER_ENABLE)
 	blt_soft_timer_init();
