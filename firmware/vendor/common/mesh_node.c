@@ -39,6 +39,7 @@
 #include "app_privacy_beacon.h"
 #include "proj/mcu/watchdog_i.h"
 #include "proj_lib/ble/service/ble_ll_ota.h"
+#include "pair_provision.h"
 #if __TLSR_RISCV_EN__
 #include "stack/ble/controller/ll/ll_stack.h"
 #include "stack/ble/controller/ll/ll_conn/conn_stack.h"
@@ -3993,9 +3994,14 @@ void mesh_flash_retrieve()
     }
 #endif
     ele_adr_primary = (tbl_mac[0] + (tbl_mac[1] << 8)) & (~(BIT(15)));    // init to mac
+
+#if PAIR_PROVISION_ENABLE
+	ele_adr_primary |= PAIR_PROV_UNPROV_ADDRESS_START;
+#else
     if(0 == ele_adr_primary){
         ele_adr_primary = 1;
     }
+#endif
     mesh_common_retrieve_all();		// should be first, because include model_sig_cfg_s
 	mesh_key_retrieve();            // should be after mesh common retrieve all() ,because of ele_adr_primary
 	mesh_misc_retrieve();           // should be after key mesh_common_retrieve_all(), because use is_provision_success() in it
@@ -4944,6 +4950,7 @@ int app_event_handler_adv(u8 *p_payload, int src_type, u8 need_proxy_and_trans_p
 	
 	u8 adv_type = p_br->type;
 	if(adv_type == MESH_ADV_TYPE_MESSAGE){
+		//LOG_MSG_LIB(TL_LOG_NODE_SDK, p_payload, 32,"test audio rx:", 0);
         lpn_debug_set_event_handle_pin(1);
 		err = mesh_rc_data_layer_network(p_payload, src_type, need_proxy_and_trans_par_val);
         lpn_debug_set_event_handle_pin(0);
@@ -5064,6 +5071,9 @@ int mesh_adv_cmd_set(u8 *p_adv, u8 *p_bear)
 		#endif
 	){
         if(len_payload > 31){
+        	#if AUDIO_MESH_EN
+        	app_audio_set_aux_payload((u8 *)p_br);
+        	#endif
             return PREPARE_HANDLE_ADV_EXTEND;	// EXTENDED_ADV_TX_TEST_EN
         }
     }
@@ -5854,6 +5864,9 @@ int is_not_use_extend_adv(u16 op)
     #if AUDIO_MESH_EN
     || (VD_ASYNC_AUDIO_DATA == op)
     #endif
+	#if PAIR_PROVISION_ENABLE
+    || (VD_PAIR_PROV_DISTRIBUTE_DATA == op) || (VD_PAIR_PROV_CONFIRM == op)
+	#endif
     || (FW_UPDATE_START == op)||(BLOB_CHUNK_TRANSFER == op)||(BLOB_BLOCK_STATUS == op)||(BLOB_PARTIAL_BLOCK_REPORT == op)){  // TODO : only Chunk data now.
         // use update start message to check whether node support extend adv
         return 0;

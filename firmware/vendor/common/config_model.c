@@ -105,7 +105,11 @@ u8 mesh_get_network_transmit()
 
 u8 mesh_get_relay_retransmit()
 {
+#if AUDIO_MESH_MULTY_NODES_TX_EN
+	return audio_mesh_get_tx_retransmit_cnt();
+#else
 	return model_sig_cfg_s.relay_retransmit.val;
+#endif
 }
 
 u8 mesh_get_ttl()

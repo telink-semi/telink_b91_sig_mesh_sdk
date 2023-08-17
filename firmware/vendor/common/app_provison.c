@@ -2706,29 +2706,34 @@ u8 is_provision_working()
 	return(get_provision_state() == STATE_DEV_PROVING);
 	#endif
 }
+
 static u8 gateway_connect_filter[6];
 void set_gateway_adv_filter(u8 *p_mac)
 {
 	memcpy(gateway_connect_filter,p_mac,sizeof(gateway_connect_filter));
 }
+
 void gateway_adv_filter_init()
 {
 	memset(gateway_connect_filter,0,sizeof(gateway_connect_filter));
 }
-void mesh_pro_rc_beacon_dispatch(pro_PB_ADV *p_adv,u8 *p_mac){
+
+void mesh_pro_rc_beacon_dispatch(pro_PB_ADV *p_adv,u8 *p_mac)
+{
+	#if PAIR_PROVISION_ENABLE
+	void pair_prov_rx_unprov_beacon_handle(beacon_data_pk *p_beacon, u8 *mac);
+	pair_prov_rx_unprov_beacon_handle((beacon_data_pk *)p_adv, p_mac);
+	#endif
+
 	//provision_mag.provison_send_state = LINK_ESTABLISHED;
-#if BLE_SIG_MESH_CERTIFY_ENABLE
-	if(	prov_para.provison_send_state != STATE_PRO_SUC &&
-		prov_para.provison_send_state != LINK_UNPROVISION_STATE){
+	if(	(prov_para.provison_send_state != STATE_PRO_SUC && prov_para.provison_send_state != LINK_UNPROVISION_STATE)
+		#if (0 == BLE_SIG_MESH_CERTIFY_ENABLE)
+		|| prov_para.key_bind_lock
+		#endif
+		){
 		return ;
 	}
-#else
-	if(	(prov_para.provison_send_state != STATE_PRO_SUC &&
-		prov_para.provison_send_state != LINK_UNPROVISION_STATE)||
-		prov_para.key_bind_lock){
-		return ;
-	}
-#endif 
+
 	beacon_data_pk *p_beacon = (beacon_data_pk *)p_adv;
 	if(p_beacon->beacon_type == SECURE_BEACON){
 		return ;

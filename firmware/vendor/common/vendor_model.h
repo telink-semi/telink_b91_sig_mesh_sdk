@@ -109,6 +109,10 @@
 #define VD_MESH_PROV_CONFIRM			0xCB
 #define VD_MESH_PROV_CONFIRM_STS		0xCC
 #define VD_MESH_PROV_COMPLETE			0xCD
+	#elif PAIR_PROVISION_ENABLE
+#define VD_PAIR_PROV_RESET_ALL_NODES	0xC5 // kick out all nodes
+#define VD_PAIR_PROV_DISTRIBUTE_DATA	0xC6 // distribute key and address, etc.
+#define VD_PAIR_PROV_CONFIRM			0xC7
     #endif
 
 	#if AUDIO_MESH_EN

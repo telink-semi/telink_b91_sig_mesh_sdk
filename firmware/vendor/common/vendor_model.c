@@ -42,6 +42,9 @@
 #if AUDIO_MESH_EN
 #include "chip_adapt_layer/app_audio.h"
 #endif
+#if PAIR_PROVISION_ENABLE
+#include "pair_provision.h"
+#endif
 
 #if (VENDOR_MD_NORMAL_EN)
 model_vd_light_t       	model_vd_light;
@@ -951,12 +954,14 @@ mesh_cmd_sig_func_t mesh_cmd_vd_func[] = {
     CMD_NO_STR(VD_MESH_PROV_CONFIRM, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_mesh_provision_confirm, VD_MESH_PROV_CONFIRM_STS),
     CMD_NO_STR(VD_MESH_PROV_CONFIRM_STS, 1, VENDOR_MD_LIGHT_S, VENDOR_MD_LIGHT_C, cb_vd_mesh_provison_data_sts, STATUS_NONE),
     CMD_NO_STR(VD_MESH_PROV_COMPLETE, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_mesh_provision_complete, STATUS_NONE),
-	#else
-		#if DEBUG_CFG_CMD_GROUP_AK_EN
+	#elif PAIR_PROVISION_ENABLE
+    CMD_NO_STR(VD_PAIR_PROV_RESET_ALL_NODES, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_mesh_pair_prov_reset_all_nodes, STATUS_NONE),
+    CMD_NO_STR(VD_PAIR_PROV_DISTRIBUTE_DATA, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_mesh_pair_prov_distribute, STATUS_NONE),
+    CMD_NO_STR(VD_PAIR_PROV_CONFIRM, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_mesh_pair_prov_confirm, STATUS_NONE),
+	#elif DEBUG_CFG_CMD_GROUP_AK_EN
 	CMD_NO_STR(VD_MESH_TRANS_TIME_GET, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_trans_time_get, VD_MESH_TRANS_TIME_STS),
 	CMD_NO_STR(VD_MESH_TRANS_TIME_SET, 0, VENDOR_MD_LIGHT_C, VENDOR_MD_LIGHT_S, cb_vd_trans_time_set, VD_MESH_TRANS_TIME_STS),
 	CMD_NO_STR(VD_MESH_TRANS_TIME_STS, 1, VENDOR_MD_LIGHT_S, VENDOR_MD_LIGHT_C, cb_vd_trans_time_sts, STATUS_NONE),
-		#endif
     #endif
 
 	#if AUDIO_MESH_EN
