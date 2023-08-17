@@ -65,6 +65,18 @@ _attribute_ram_code_ void irq_uart_handle()
 #endif
 
 #if IRQ_TIMER1_ENABLE
+	#if __TLSR_RISCV_EN__
+int timer1_irq_cnt = 0;
+_attribute_ram_code_sec_ void timer1_irq_handler(void)
+{
+	if(timer_get_irq_status(TMR_STA_TMR1))
+	{
+		timer_clr_irq_status(TMR_STA_TMR1);
+		timer1_irq_cnt++;
+		gpio_write(GPIO_PA1, timer1_irq_cnt%2);
+	}
+}
+	#else
 _attribute_ram_code_ void irq_timer_handle()
 {
     u32 src = reg_irq_src;
@@ -75,6 +87,7 @@ _attribute_ram_code_ void irq_timer_handle()
        gpio_write(GPIO_PA1,A_debug_irq_cnt%2);
     }
 }
+	#endif
 #endif
 
 #if	IRQ_GPIO_ENABLE
@@ -121,7 +134,7 @@ _attribute_ram_code_ void irq_handler(void)
 		irq_blt_sdk_handler ();  //ble irq proc
 	}
 
-#if IRQ_TIMER1_ENABLE
+#if (IRQ_TIMER1_ENABLE && !__TLSR_RISCV_EN__)
 	irq_timer_handle();
 #endif
 
