@@ -130,6 +130,13 @@ u8 proxy_message_between_gatt_and_adv_en = 0;
 u8 proxy_message_between_gatt_and_adv_en = FEATURE_PROXY_EN;
 #endif
 
+#if GATEWAY_ENABLE
+u8 gateway_enable_lib = 1; // use in library
+#else
+u8 gateway_enable_lib = 0;
+#endif
+
+
 MYFIFO_INIT(mesh_adv_cmd_fifo, sizeof(mesh_cmd_bear_t)+DELTA_EXTEND_AND_NORMAL_ALIGN4_BUF, MESH_ADV_CMD_BUF_CNT);
 #if (FEATURE_RELAY_EN || WIN32)
 MYFIFO_INIT_NO_RET(mesh_adv_fifo_relay, sizeof(mesh_relay_buf_t)+DELTA_EXTEND_AND_NORMAL_ALIGN4_BUF, MESH_ADV_BUF_RELAY_CNT);
@@ -1663,7 +1670,7 @@ u8 * mesh_cfg_cmd_dev_key_get(const u16 adr)
 	return mesh_key.dev_key;
 }
 
-#if MD_REMOTE_PROV
+#if (MD_REMOTE_PROV && DEVICE_KEY_REFRESH_ENABLE)
 u8 * mesh_cfg_cmd_dev_key_candi_get(const u16 adr)
 {
 	#if (IS_VC_PROJECT_MASTER || DONGLE_PROVISION_EN)
@@ -1685,7 +1692,7 @@ void mesh_tx_en_devkey_candi(u8 en)
 
 u8 *mesh_cfg_devkey_candi_get(u16 adr)
 {
-	#if MD_REMOTE_PROV
+	#if (MD_REMOTE_PROV && DEVICE_KEY_REFRESH_ENABLE)
 	if(devkey_candi_en){
 		return mesh_cfg_cmd_dev_key_candi_get(adr);
 	}else
@@ -2361,6 +2368,72 @@ void mesh_tx_reliable_check_and_init(material_tx_cmd_t *p)
 #endif
 }
 
+// ----------------------------reliable flow
+mesh_tx_reliable_t mesh_tx_reliable;
+
+void mesh_tx_reliable_tick_refresh_proc(int rx_seg_flag, u16 adr_src)
+{
+	if(mesh_tx_reliable.busy){
+		if((!rx_seg_flag) || mesh_tx_reliable.mat.adr_dst == adr_src){
+			mesh_tx_reliable_tick_refresh();
+		}
+	}
+}
+
+int mesh_tx_cmd_reliable(material_tx_cmd_t *p)
+{
+	int err = -1;
+	
+	mesh_tx_reliable_check_and_init(p);
+	
+    if(is_busy_mesh_tx_cmd(p->adr_dst)){
+		mesh_tx_with_random_delay_ms = 0;//if tx failed, clear should be better.
+        LOG_MSG_ERR(TL_LOG_MESH,0, 0 ,"tx reliable: cmd is busy",0);
+        return TX_ERRNO_TX_BUSY;
+    }
+	LOG_MSG_LIB(TL_LOG_NODE_SDK,p->par, p->par_len,"tx cmd reliable,op:0x%02x(%s),dst:0x%x par_len:%d par:",p->op,get_op_string(p->op,0),p->adr_dst,p->par_len);
+    mesh_match_type_t match_type;
+    mesh_match_group_mac(&match_type, p->adr_dst, p->op, 1, p->adr_src);
+
+    mesh_tx_reliable_finish();
+    is_cmd_with_tid_check_and_set(p->adr_src, p->op, p->par, p->par_len, p->tid_pos_vendor_app);
+    
+    if(1){ //(p->par_len <= sizeof(mesh_tx_reliable.ac_par)){ // not segment
+    	memcpy(&mesh_tx_reliable.mat, p, sizeof(material_tx_cmd_t));
+    	
+        memset(mesh_tx_reliable.ac_par, 0, sizeof(mesh_tx_reliable.ac_par));
+        memcpy(mesh_tx_reliable.ac_par, p->par, p->par_len);
+        mesh_tx_reliable.mat.par = mesh_tx_reliable.ac_par;
+        
+        memcpy(&mesh_tx_reliable.match_type, &match_type,sizeof(mesh_tx_reliable.match_type));
+        #if VC_SUPPORT_ANY_VENDOR_CMD_EN
+        if(IS_VENDOR_OP(mesh_tx_reliable.mat.op)){
+            //mesh_tx_reliable.mat.op_rsp = mesh_tx_reliable.mat.op_rsp; // have been set in mesh_bulk_cmd_() or set_material_tx_cmd_() before.
+        }else
+        #endif
+        {
+            mesh_tx_reliable.mat.op_rsp = get_op_rsp(p->op);
+        }
+        
+        u32 t_ms = get_reliable_interval_ms(p);
+        if(FW_UPDATE_CANCEL == p->op){
+			t_ms = get_reliable_interval_ms_min();
+        }
+        mesh_tx_reliable.invl_ms = t_ms;
+
+        err = mesh_tx_cmd2_access(p, 1, &match_type);
+        if(err){	// cancle reliable flow
+			memset(&mesh_tx_reliable, 0, sizeof(mesh_tx_reliable));
+        }
+    }else{
+    	err = mesh_tx_cmd2_access(p, 0, &match_type);
+    }
+	mesh_tx_with_random_delay_ms = 0;//if tx failed, clear should be better.
+    return err;
+}
+
+int is_busy_reliable_cmd(u16 adr_dst){return (mesh_tx_reliable.busy && !is_own_ele(adr_dst));}
+
 void mesh_tx_reliable_proc()
 {
     if(mesh_tx_reliable.busy){
@@ -2387,7 +2460,54 @@ void mesh_tx_reliable_proc()
 		rf_link_slave_read_status_update ();
     }
 }
+#else
+int is_busy_reliable_cmd(u16 adr_dst){return 0;}
 #endif
+
+int mesh_tx_cmd_unreliable(material_tx_cmd_t *p)
+{
+    int err = -1;
+
+    u8 repeat_cnt = REPEATE_CNT_UNRELIABLE;
+    mesh_match_type_t match_type;
+    mesh_match_group_mac(&match_type, p->adr_dst, p->op, 1, p->adr_src);
+    if((DST_MATCH_MAC == match_type.type)	// local or LPN
+    || (is_lpn_support_and_en)){
+    	repeat_cnt = 1;
+    }
+    is_cmd_with_tid_check_and_set(p->adr_src, p->op, p->par, p->par_len, p->tid_pos_vendor_app);
+
+    if(1){//(p->op & 0xff00){
+        LOG_MSG_LIB(TL_LOG_NODE_SDK,p->par, p->par_len>32?32:p->par_len,"mesh tx NoAck,op:0x%04x(%s),src:0x%04x,dst:0x%04x,sno:0x%06x par_len:%d par:",p->op,get_op_string(p->op,0),p->adr_src, p->adr_dst,mesh_adv_tx_cmd_sno,p->par_len);
+    }else{
+		// save code size
+        //LOG_MSG_LIB(TL_LOG_NODE_SDK,p->par, p->par_len>32?32:p->par_len,"mesh tx NoAck,op:0x%02x(%s),src:0x%04x,dst:0x%04x,par_len:%d par:",p->op,get_op_string(p->op,0),p->adr_src, p->adr_dst,p->par_len);
+    }
+
+    foreach(i,repeat_cnt){
+        int err_temp = mesh_tx_cmd2_access(p, 0, &match_type);
+        if(0 == i){
+            err = err_temp;     // return the first result.
+        }
+        
+        if(err_temp){
+            break;
+        }
+    }
+	mesh_tx_with_random_delay_ms = 0;//if tx failed, clear should be better.
+    return err;
+}
+
+int is_busy_tx_seg(u16 adr_dst)
+{
+    // mesh_cmd_ut_tx_seg is used for segment all the time when tx segment busy.  
+    return (mesh_tx_seg_par.busy && (BLOB_CHUNK_TRANSFER != mesh_tx_seg_par.match_type.mat.op) && !is_own_ele(adr_dst));
+}
+
+int is_busy_mesh_tx_cmd(u16 adr_dst)
+{
+	return (is_busy_reliable_cmd(adr_dst) || is_busy_tx_seg(adr_dst));
+}
 
 void mesh_friend_key_RevokingOld(mesh_net_key_t *new_key)
 {
@@ -2695,6 +2815,10 @@ u8 mesh_app_key_set(u16 op, const u8 *ak, u16 app_key_idx, u16 net_key_idx, int 
                                     #endif
 									#if DU_ENABLE									
 									cfg_cmd_heartbeat_pub_set(ele_adr_primary, VD_DU_GROUP_DST, 0xff, 0x07, 0x04, 0, 0);
+									#endif
+
+									#if MESH_OTA_DEFAULT_SUB_EN
+									cfg_cmd_sub_set(CFG_MODEL_SUB_ADD, ele_adr_primary, ele_adr_primary, MESH_OTA_DEFAULT_GROUP_ADDR, SIG_MD_BLOB_TRANSFER_S, !DRAFT_FEAT_VD_MD_EN);
 									#endif
     						    }                                         
     						}
@@ -3316,20 +3440,31 @@ int mesh_par_retrieve(u8 *out, u32 *p_adr, u32 adr_base, u32 size){
 	}
 	#else
     int err = -1;
-    for(int i = 0; i < (FLASH_SECTOR_SIZE); i += (size + SIZE_SAVE_FLAG)){
-		*p_adr = adr_base + i;
+	*p_adr = adr_base + FLASH_SECTOR_SIZE-(FLASH_SECTOR_SIZE%(size+SIZE_SAVE_FLAG));
+	for(int adr_read = *p_adr - (size+SIZE_SAVE_FLAG); adr_read >= adr_base; adr_read -= (size + SIZE_SAVE_FLAG)){// from back to forward, crc16 of 4k byte cost 40ms in 16M clock
+		mesh_save_head_t head;
+    	flash_read_page(adr_read, SIZE_SAVE_FLAG, (u8 *)&head);
+		if(U32_MAX == *(u32 *)&head){ // checking 4 byte should be better
+			*p_adr = adr_read;
+		}else if(SAVE_FLAG == head.flag){
+			if(head.crc_en && (FLASH_ADR_MISC == adr_base)){ // only add crc for misc sector now.
+				u8 temp[min(size, FLASH_SECTOR_SIZE)];
+				flash_read_page(adr_read + SIZE_SAVE_FLAG, size, temp); 	
+				if(crc16(temp, size) == head.crc){
+					memcpy(out, temp, size); // copy to "out" only after checking OK in case no valid data, especially there is only one record.
+					err = 0;
+					//LOG_MSG_LIB(TL_LOG_NODE_BASIC, 0, 0, "crc ok address base:0x%x,address:0x%x,next pos:0x%x",adr_base,adr_read,*p_adr);
+				}
+			}else{
+				flash_read_page(adr_read + SIZE_SAVE_FLAG, size, out); 	
+				err = 0;
+			}
 
-        u8 save_flag;
-        flash_read_page(*p_adr, 1, &save_flag);
-		if(SAVE_FLAG == save_flag){
-            flash_read_page(*p_adr + SIZE_SAVE_FLAG, size, out);
-            err = 0;
-		}else if (SAVE_FLAG_PRE == save_flag){
+			if(0 == err){
+				break;
+			}
+		}else{ // include (SAVE_FLAG_PRE == head.flag)
 			continue;
-		}else if(save_flag != 0xFF){
-		    continue;   //invalid
-		}else{
-		    break;      // 0xFF: end
 		}
 	}
 	return err;
@@ -3435,11 +3570,14 @@ int mesh_flash_data_cmp(u32 adr, const u8 *in, u32 size)
 void mesh_par_write_with_check(u32 addr, u32 size, const u8 *in)
 {
 	// make sure when change to the save_flag ,the flash must be write already .
-	u32 save_flag = SAVE_FLAG_PRE;
-	flash_write_with_check(addr, SIZE_SAVE_FLAG, (u8 *)&save_flag);
+	mesh_save_head_t head={0};
+	head.flag = SAVE_FLAG_PRE;
+	head.crc_en = 1;
+	head.crc = crc16(in, size);
+	flash_write_with_check(addr, SIZE_SAVE_FLAG, (u8 *)&head);
 	flash_write_with_check(addr + SIZE_SAVE_FLAG, size, in);
-	save_flag = SAVE_FLAG;
-	flash_write_with_check(addr, SIZE_SAVE_FLAG, (u8 *)&save_flag);
+	head.flag = SAVE_FLAG;
+	flash_write_with_check(addr, sizeof(head.flag), &head.flag);
 }
 
 static int is_valid_mesh_par_addr(u32 addr)
@@ -3491,10 +3629,6 @@ void mesh_par_store(const u8 *in, u32 *p_adr, u32 adr_base, u32 size){
     }
 	
 	mesh_par_write_with_check(*p_adr, size, in);
-	if(*p_adr >= adr_base + size_save){
-		u32 zero = 0;
-    	flash_write_page(adr_last, SIZE_SAVE_FLAG, (u8 *)&zero);  // clear last flag
-	}
 
 	if(FLASH_ADR_MISC == adr_base){
 		u32 tmp = 0;
@@ -3669,10 +3803,9 @@ int mesh_misc_retrieve(){
         if(!is_actived_factory_test_mode()){
             ct_flag = misc_save.ct_flag;
         }
-		u32 temp = -1;
-		if(memcmp(misc_save.iv_index, &temp, 4)){	// for compatibility
-			memcpy(iv_idx_st.cur, misc_save.iv_index, 4);
-		}
+
+		memcpy(iv_idx_st.cur, misc_save.iv_index, 4);
+
 		iv_idx_st.update_trigger_by_save = misc_save.iv_update_trigger_flag;
 		
     }
@@ -4957,20 +5090,6 @@ int app_event_handler_adv(u8 *p_payload, int src_type, u8 need_proxy_and_trans_p
 	}
 	else if((adv_type == MESH_ADV_TYPE_BEACON)&&(p_br->beacon.type == SECURE_BEACON)){
 		mesh_rc_data_beacon_sec(p_payload, 0);
-		#if GATEWAY_ENABLE
-		extern u8 ivi_beacon_key[16];
-		u8 ivi_upload[4];
-		//only when the gateway is unprovisioned ,or it can decrypt the secure beacon,it will pass to vc 
-		if(!is_provision_success() && decrypt_secure_beacon_by_beaconkey(p_payload ,ivi_beacon_key,ivi_upload)==0){
-			gateway_upload_ivi(ivi_upload);
-		}
-		/*
-		else if ((is_provision_success() && decrypt_secure_beacon(p_payload,ivi_upload)== 0)){
-			// pass the ivi directly to gateway	
-			gateway_upload_ivi(ivi_upload);
-		}
-		*/
-		#endif
 	}
 	else if((adv_type == MESH_ADV_TYPE_BEACON)&&(p_br->beacon.type == PRIVACY_BEACON)){
 		#if MD_PRIVACY_BEA

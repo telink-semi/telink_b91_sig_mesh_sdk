@@ -838,8 +838,14 @@ extern "C" {
 #define ACTIVE_SCAN_ENABLE  		0
 	#if TESTCASE_FLAG_ENABLE
 #define REMOTE_SET_RETRY_EN			0	
+#define DEVICE_KEY_REFRESH_ENABLE	1 	// must 1
 	#else
 #define REMOTE_SET_RETRY_EN			1
+		#if WIN32
+#define DEVICE_KEY_REFRESH_ENABLE	1	
+		#else
+#define DEVICE_KEY_REFRESH_ENABLE	0	// default 0 to compatible with previous version's VC_node_info[]
+		#endif
 	#endif
 #else
 #define REMOTE_PROV_SCAN_GATT_EN	0

@@ -35,15 +35,9 @@ extern void main_loop ();
 void blc_pm_select_none();
 
 #if (HCI_ACCESS==HCI_USE_UART)
-#include "drivers.h"
+#include "proj/drivers/uart.h"
 extern my_fifo_t hci_rx_fifo;
 
-#if __TLSR_RISCV_EN__
-_attribute_ram_code_ void irq_uart_handle()
-{
-    irq_uart_handle_fifo();
-}
-#else // b85m
 u16 uart_tx_irq=0, uart_rx_irq=0;
 
 _attribute_ram_code_ void irq_uart_handle()
@@ -69,9 +63,20 @@ _attribute_ram_code_ void irq_uart_handle()
 	}
 }
 #endif
-#endif
 
 #if IRQ_TIMER1_ENABLE
+	#if __TLSR_RISCV_EN__
+int timer1_irq_cnt = 0;
+_attribute_ram_code_sec_ void timer1_irq_handler(void)
+{
+	if(timer_get_irq_status(TMR_STA_TMR1))
+	{
+		timer_clr_irq_status(TMR_STA_TMR1);
+		timer1_irq_cnt++;
+		gpio_write(GPIO_PA1, timer1_irq_cnt%2);
+	}
+}
+	#else
 _attribute_ram_code_ void irq_timer_handle()
 {
     u32 src = reg_irq_src;
@@ -82,10 +87,30 @@ _attribute_ram_code_ void irq_timer_handle()
        gpio_write(GPIO_PA1,A_debug_irq_cnt%2);
     }
 }
+	#endif
 #endif
 
 #if	IRQ_GPIO_ENABLE
+#if __TLSR_RISCV_EN__
+volatile int gpio_irq_cnt = 0, gpio_irq_risc0_cnt = 0, gpio_irq_risc1_cnt = 0;
+_attribute_ram_code_sec_noinline_ void gpio_irq_handler(void)
+{
+	gpio_irq_cnt++;
+	gpio_clr_irq_status(FLD_GPIO_IRQ_CLR);
+}
 
+_attribute_ram_code_sec_noinline_ void gpio_risc0_irq_handler(void)
+{
+	gpio_irq_risc0_cnt++;
+	gpio_clr_irq_status(FLD_GPIO_IRQ_GPIO2RISC0_CLR);
+}
+
+_attribute_ram_code_sec_noinline_ void gpio_risc1_irq_handler(void)
+{
+	gpio_irq_risc1_cnt++;
+	gpio_clr_irq_status(FLD_GPIO_IRQ_GPIO2RISC1_CLR);
+}
+#else
 void irq_gpio_handle()
 {
 	u32 src = reg_irq_src;
@@ -113,6 +138,7 @@ void irq_gpio_handle()
 	#endif
 }
 #endif
+#endif
 
 _attribute_ram_code_ void irq_handler(void)
 {
@@ -128,7 +154,7 @@ _attribute_ram_code_ void irq_handler(void)
 		irq_blt_sdk_handler ();  //ble irq proc
 	}
 
-#if IRQ_TIMER1_ENABLE
+#if (IRQ_TIMER1_ENABLE && !__TLSR_RISCV_EN__)
 	irq_timer_handle();
 #endif
 
@@ -164,19 +190,7 @@ _attribute_ram_code_
 void uart0_irq_handler(void)
 {
 #if (HCI_ACCESS==HCI_USE_UART)
-	if(IRQ19_UART0 == UART_IRQ_NUM){
-		irq_uart_handle();
-	}
-#endif
-}
-
-_attribute_ram_code_
-void uart1_irq_handler(void)
-{
-#if (HCI_ACCESS==HCI_USE_UART)
-	if(IRQ18_UART1 == UART_IRQ_NUM){
-		irq_uart_handle();
-	}
+	irq_uart_handle();
 #endif
 }
 

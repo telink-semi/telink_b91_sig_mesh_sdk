@@ -52,6 +52,8 @@
 #define	CLOCK_SYS_CLOCK_1MS				SYSTEM_TIMER_TICK_1MS
 #define	CLOCK_SYS_CLOCK_1US				SYSTEM_TIMER_TICK_1US
 
+#define BOOT_MARK_ADDR_B85				0x00008 
+
 typedef enum{
 	SET_RX_WITHOUT_CHN,		// must set to rx mode
 	SET_RX_WITH_CHN,		// must set to rx mode

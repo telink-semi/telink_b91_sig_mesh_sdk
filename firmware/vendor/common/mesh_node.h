@@ -1568,6 +1568,12 @@ typedef struct{
 #define SIZE_SAVE_FLAG		(4)
 
 typedef struct{
+	u8 flag;
+	u8 crc_en:1;
+	u16 crc;
+}mesh_save_head_t;
+
+typedef struct{
     u32 adr_base;
     u8 *p_save_par;
     u32 *p_adr;

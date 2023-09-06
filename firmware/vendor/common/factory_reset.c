@@ -389,6 +389,15 @@ int factory_reset() // flash plus
 	if((FLASH_ADR_MESH_TYPE_FLAG < FLASH_ADR_AREA_1_START) || (FLASH_ADR_MESH_TYPE_FLAG >= FLASH_ADR_AREA_1_END)){
         flash_erase_sector(FLASH_ADR_MESH_TYPE_FLAG);
     }
+
+#if GATEWAY_ENABLE
+	#if (FLASH_ADR_VC_NODE_INFO >= FLASH_ADR_AREA_1_END) // user may move FLASH_ADR_VC_NODE_INFO to custom flash area.
+	for (int i = 0; i < (FLASH_ADR_VC_NODE_INFO_END - FLASH_ADR_VC_NODE_INFO) / 4096; ++i){
+		flash_erase_sector(FLASH_ADR_VC_NODE_INFO + i*0x1000); // user may change FLASH_ADR_VC_NODE_INFO, erase should be better
+	}
+	#endif
+#endif
+
 	// no area2
 
 	#if HOMEKIT_EN
@@ -440,7 +449,15 @@ int factory_reset(){
 		    flash_erase_sector(adr);
 		}
 	}
-	
+
+#if GATEWAY_ENABLE
+	#if (FLASH_ADR_VC_NODE_INFO >= FLASH_ADR_AREA_2_END) // user may move FLASH_ADR_VC_NODE_INFO to custom flash area.
+	for (int i = 0; i < (FLASH_ADR_VC_NODE_INFO_END - FLASH_ADR_VC_NODE_INFO) / 4096; ++i){
+		flash_erase_sector(FLASH_ADR_VC_NODE_INFO + i*0x1000); // user may change FLASH_ADR_VC_NODE_INFO, erase should be better
+	}
+	#endif
+#endif
+
 	for(int i = 1; i < (FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096; ++i){
 		#if XIAOMI_MODULE_ENABLE
 		if(i < (((FLASH_ADR_PAR_USER_MAX - (CFG_SECTOR_ADR_CALIBRATION_CODE)) / 4096) - 1)){ // the last sector is FLASH_ADR_MI_AUTH

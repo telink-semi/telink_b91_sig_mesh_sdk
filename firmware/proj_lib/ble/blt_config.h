@@ -241,6 +241,7 @@ typedef struct {
 
 #if (__PROJECT_MESH_PRO__ || __PROJECT_MESH_GW_NODE__)
 #define 		FLASH_ADR_VC_NODE_INFO		0x7f000		//
+#define 		FLASH_ADR_VC_NODE_INFO_END	0x80000
 #endif
 #define			FLASH_ADR_AREA_1_END		0x80000
 
@@ -328,10 +329,12 @@ vendor use from 0xf6000 to 0xfcfff should be better, because telink may use 0xFB
 	#if WIN32
 #define 		FLASH_ADR_VC_NODE_INFO		0x80000		//  from 0x00000 to 0x40000 (256K)
 	#else
-		#if VC_NODE_INFO_MULTI_SECTOR_EN
+		#if DEBUG_CFG_CMD_GROUP_AK_EN
 #define         FLASH_ADR_VC_NODE_INFO      0x78000 // vcnode info, occupy sector num dependent on  MESH_NODE_MAX_NUM
+#define 		FLASH_ADR_VC_NODE_INFO_END	0x79000
 		#else
 #define 		FLASH_ADR_VC_NODE_INFO		0x3f000		//
+#define 		FLASH_ADR_VC_NODE_INFO_END	0x40000
 		#endif
 	#endif
 #endif
@@ -423,6 +426,7 @@ vendor use from 0x7ffff to 0x78000 should be better, because telink may use 0x78
 #define			FLASH_ADR_MD_MESH_OTA		0x38000
 #define         FLASH_ADR_MD_REMOTE_PROV    0x39000 // remote provision part 
 #define 		FLASH_ADR_VC_NODE_INFO		0x3A000		//
+#define 		FLASH_ADR_VC_NODE_INFO_END	0x3B000
 #define			FLASH_ADR_AREA_1_END		0x3B000
 // FLASH_ADR_AREA_1_END to start of user is reserve for telink
 /*******SIG mesh vendor define here, from FLASH_ADR_USER_MESH_END ~ FLASH_ADR_USER_MESH_START, vendor define from behined to head should be better, .*/
@@ -465,6 +469,7 @@ vendor use from 0x7ffff to 0x78000 should be better, because telink may use 0x78
 #define			FLASH_ADR_MD_MESH_OTA		0xC9000
 #define         FLASH_ADR_MD_REMOTE_PROV    0xCA000 // remote provision part 
 #define 		FLASH_ADR_VC_NODE_INFO		0xCB000		//
+#define 		FLASH_ADR_VC_NODE_INFO_END	0xCC000
 #define			FLASH_ADR_AREA_1_END		0xCC000
 // FLASH_ADR_AREA_1_END to start of user is reserve for telink
 /*******SIG mesh vendor define here, from FLASH_ADR_USER_MESH_END ~ FLASH_ADR_USER_MESH_START, vendor define from behined to head should be better, .*/
@@ -570,6 +575,7 @@ vendor use from 0x7ffff to 0x78000 should be better, because telink may use 0x78
 #define			FLASH_ADR_MD_MESH_OTA		0x54000
 #define         FLASH_ADR_MD_REMOTE_PROV    0x55000 // remote provision part 
 #define 		FLASH_ADR_VC_NODE_INFO		0x56000		//
+#define 		FLASH_ADR_VC_NODE_INFO_END	0x57000
 #define			FLASH_ADR_AREA_1_END		0x57000
 // FLASH_ADR_AREA_1_END to start of user is reserve for telink
 /*******SIG mesh vendor define here, from FLASH_ADR_USER_MESH_END ~ FLASH_ADR_USER_MESH_START, vendor define from behined to head should be better, .*/

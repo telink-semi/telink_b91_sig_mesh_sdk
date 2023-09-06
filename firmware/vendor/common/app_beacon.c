@@ -261,7 +261,7 @@ int mesh_tx_sec_nw_beacon_all_net(u8 blt_sts)
 	if((0 == is_need_send_sec_nw_beacon()) && !blt_sts){// force notify security while gatt connecting
 		return err;
 	}
-	if(!is_provision_success()||MI_API_ENABLE){// in the mi mode will never send secure beacon .
+	if(!is_provision_success() || is_iv_index_invalid() || MI_API_ENABLE ){// in the mi mode will never send secure beacon .
 		return err;
 	}
 	foreach(i,NET_KEY_MAX){
