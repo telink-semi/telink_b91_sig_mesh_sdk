@@ -150,7 +150,7 @@ enum{/*vendor generic group, op code include C1-C4*/
     VD_GROUP_G_OFF                      = 0,    // compatible with legacy version, so use 2 sub op for onoff.
     VD_GROUP_G_ON                       = 1,    // compatible with legacy version, so use 2 sub op for onoff.
     VD_GROUP_G_LPN_GATT_OTA_MODE        = 2,
-    VD_GROUP_G_MIC_TX_REQ				= 3,
+    VD_GROUP_G_MIC_TX_REQ				= 3,	// AUDIO_MESH_EN
     VD_G_TELINK_END     = 0x7F,
     /* user use sub op from 0x80 to 0xff*/
     VD_GROUP_G_USER_START               = 0x80,

@@ -128,15 +128,6 @@
 #endif
 /************* end ************/
 
-#if (GATEWAY_ENABLE)
-#if(DEBUG_CFG_CMD_GROUP_AK_EN)
-#define VC_NODE_INFO_MULTI_SECTOR_EN	1		
-#else
-//enable to use 2 or more sector to save VC_node_info(default use one sector, max support 200 nodes)
-#define VC_NODE_INFO_MULTI_SECTOR_EN	0   // if enable, it will use coustom flash area(such as 0x78000 and 0x79000, please check)
-#endif
-#endif
-
 // ---- message cache setting
 #define SIZE_SNO        3
 

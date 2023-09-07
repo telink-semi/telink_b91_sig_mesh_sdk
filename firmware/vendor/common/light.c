@@ -328,8 +328,13 @@ u8 edch_is_exist()
 {
 #if PROV_AUTH_LEAK_RECREATE_KEY_EN
 #else
-	u32 *p_edch = (u32 *) FLASH_ADR_EDCH_PARA;
-	if(*p_edch == 0xffffffff){
+	u32 edch_4bypte;
+	#if __TLSR_RISCV_EN__
+	flash_read_page (FLASH_ADR_EDCH_PARA, sizeof(edch_4bypte), (u8 *)&edch_4bypte);
+	#else
+	edch_4bypte = *(u32 *) FLASH_ADR_EDCH_PARA;
+	#endif
+	if(edch_4bypte == 0xffffffff){
 		return 0;
 	}	
 #endif

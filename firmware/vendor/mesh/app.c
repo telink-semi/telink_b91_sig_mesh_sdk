@@ -64,7 +64,7 @@
 #include "mible_log.h"
 #endif 
 #if (HCI_ACCESS==HCI_USE_UART)
-#include "proj/drivers/uart.h"
+#include "drivers.h"
 #endif
 
 #if DU_ENABLE
@@ -381,7 +381,6 @@ void proc_ui()
 
 	#if AUDIO_MESH_EN
 	proc_ui_audio();
-	
 	return ;
 	#endif
 	
@@ -812,6 +811,9 @@ _attribute_no_inline_ void user_init() // must add no inline, or it will be inli
 	//blc_register_hci_handler(rx_from_uart_cb,tx_to_uart_cb);				//customized uart handler
 	#endif
 #endif
+
+
+
 	#if ADC_ENABLE
 	adc_drv_init();	// still init even though BATT_CHECK_ENABLE is enable, beause battery check may not be called in user init.
 	#endif

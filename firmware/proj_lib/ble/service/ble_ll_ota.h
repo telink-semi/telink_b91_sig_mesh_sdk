@@ -216,7 +216,7 @@ void bls_ota_setBootFlagAddr(u32 bootFlag_addr);
 
 int bls_ota_clearNewFwDataArea(int check_only);
 
-unsigned short crc16(unsigned char *pD, int len);
+unsigned short crc16(const unsigned char *pD, int len);
 u8 ota_condition_enable();
 void set_ota_reboot_flag(u8 flag);
 u8 get_fw_ota_value();

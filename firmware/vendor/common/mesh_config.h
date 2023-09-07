@@ -167,7 +167,7 @@ extern "C" {
 		#endif
 
 #define PAIR_PROVISION_ENABLE		 	0 	// provision without app and gateway. // usually for audio mesh
-#define AUDIO_I2S_EN					0   // The default is analog sampling, On means using I2S sampling
+#define AUDIO_I2S_EN					0   // 0 means analog sampling, 1 means using I2S sampling
 
 /**
  * @brief 		enum value: sample rate in RF packet

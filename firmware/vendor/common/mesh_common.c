@@ -3567,7 +3567,7 @@ int mesh_dev_key_candi_decrypt_cb(u16 src_adr, int dirty_flag , const u8* ac_bac
 {
 	int err =-1;
 	// both the vc and the node will use the remote prov candi decrypt
-#if MD_REMOTE_PROV
+#if (MD_REMOTE_PROV && DEVICE_KEY_REFRESH_ENABLE)
 	//roll back the src data to the ac part 
 	u8 *p_devkey = mesh_cfg_cmd_dev_key_candi_get(src_adr);
 	if(is_buf_zero(p_devkey,16)){

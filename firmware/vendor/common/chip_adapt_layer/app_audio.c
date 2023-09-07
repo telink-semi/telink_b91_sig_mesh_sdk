@@ -163,9 +163,9 @@ void audio_codec_config (audio_channel_wl_mode_e channel_wl,int sample_rate, u32
 	#else
 	audio_i2s_set_pin();
 	audio_set_chn_wl(channel_wl);
-	audio_mux_config(IO_I2S,BIT_16_MONO,BIT_16_MONO,BIT_16_MONO);
+	audio_mux_config(IO_I2S,BIT_16_MONO,BIT_16_MONO,BIT_16_MONO_FIFO0); // To be consistent with the audio group(broadcast_mic_sdk)
 	audio_i2s_config(I2S_I2S_MODE, I2S_BIT_16_DATA, I2S_M_CODEC_S,&audio_mesh_audio_i2s_invert_config);
-	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_LT_L1, 0);
+	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_EQUAL, 0); // To be consistent with the audio group(broadcast_mic_sdk)
 	audio_clk_en(1,1);
 	#endif
 
@@ -200,7 +200,7 @@ void app_audio_init ()
 	audio_codec_adc_power_on ();
 	#endif
 	
-	audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_EQUAL, 0);
+	//audio_set_i2s_clock(AUDIO_SAMPLE_RATE, AUDIO_RATE_EQUAL, 0); // audio set i2s clock() has been called in audio_codec_config() for both analog and I2S mode.
 
 #if (CODEC_ALGORITHM_SEL == CODEC_ALGORITHM_LC3)
 	audio_mesh_enc_init (audio_mesh_enc_buff, sizeof(audio_mesh_enc_buff), 48000, 1, LC3_BIT_RATE, 0);		//0: 10ms; 1: 7.5ms
