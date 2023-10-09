@@ -314,8 +314,8 @@ int mesh_rc_data_layer_access2(u8 *ac, int len_ac, mesh_cmd_nw_t *p_nw)
 	memcpy(ts_B_11_ac[(ts_B_11++)%ARRAY_SIZE(ts_B_11_ac)], ac, len_log);
 	#endif
 
-    int is_support_flag = 0;
-    int is_status_cmd = 0;
+	__UNUSED int is_support_flag = 0;
+	__UNUSED int is_status_cmd = 0;
 
     #if (VC_SUPPORT_ANY_VENDOR_CMD_EN && !GATEWAY_ENABLE)
     if(IS_VENDOR_OP(op)){

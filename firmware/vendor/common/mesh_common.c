@@ -1337,6 +1337,10 @@ void entry_ota_mode(void)
 	dual_mode_disable();
 	// bls_ota_clearNewFwDataArea(0); // may disconnect
 	#endif
+
+	#if MESH_FLASH_PROTECTION_EN
+	mesh_flash_unlock();
+	#endif
 }
 
 _USER_CAN_REDEFINE_ u8 ota_condition_enable()

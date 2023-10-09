@@ -48,6 +48,7 @@ extern "C" {
 #define PCBA_ADK80D_C1T213A20_V13          	1	// development board
 #define PCBA_C1T213A16_V13_PA_DONGLE 		2	// PA dongle
 #define PCBA_C1T213A3_V11_DONGLE			3 	// dongle without PA
+#define PCBA_C1T216A20_V1_2                 4	//  without SWS for this PCBA.
 
 #ifndef PCBA_B91_SEL // user can define in user_app_config.h
 #define PCBA_B91_SEL			PCBA_ADK80D_C1T213A20_V13
@@ -80,6 +81,8 @@ extern "C" {
 #define SWITCH_FW_ENABLE		0 // set to 0, just for particular customer 
 #endif
 #endif
+
+#define MESH_FLASH_PROTECTION_EN		0
 
 //////////// product  Information  //////////////////////////////
 #define ID_VENDOR				0x248a			// for report
@@ -297,6 +300,15 @@ extern "C" {
 #define PB3_INPUT_ENABLE		1
 #define	SW1_GPIO				GPIO_PB3			// PCB mark SW7
 #define	SW2_GPIO				GPIO_PB2			// PCB mark SW2
+#elif (PCBA_B91_SEL == PCBA_C1T216A20_V1_2)
+#define PULL_WAKEUP_SRC_PC2     PM_PIN_PULLUP_1M	//btn
+#define PULL_WAKEUP_SRC_PC0     PM_PIN_PULLUP_1M	//btn
+#define PC2_INPUT_ENABLE		1
+#define PC0_INPUT_ENABLE		1
+#define	SW1_GPIO				GPIO_PC0			// PCB mark SW4 // TL_Key2 
+#define	SW2_GPIO				GPIO_PC2			// PCB mark SW2 // TL_Key1
+#define PULL_WAKEUP_SRC_PC3     PM_PIN_PULLDOWN_100K	//btn	// TL_Key3 // change key matrix to button
+#define PULL_WAKEUP_SRC_PC1     PM_PIN_UP_DOWN_FLOAT	//btn	// TL_Key4 // change key matrix to button
 #endif
 
 #define XIAOMI_MODULE_ENABLE	MI_API_ENABLE
@@ -318,6 +330,11 @@ extern "C" {
 #define PWM_G       PWM_PWM5_PB0	//green
 #define PWM_B       PWM_PWM2_PB7	//blue
 #define PWM_W       PWM_PWM1_PB5	//white
+#elif(PCBA_B91_SEL == PCBA_C1T216A20_V1_2)
+#define PWM_R       PWM_PWM3_PB1	//red
+#define PWM_G       PWM_PWM1_PB5	//green
+#define PWM_B       PWM_PWM5_PB0	//blue
+#define PWM_W       GPIO_PB6		//white // TODO: PB6 is not PWM.
 #endif
 
 #define PWM_FUNC_R  0  // no use, just for compile

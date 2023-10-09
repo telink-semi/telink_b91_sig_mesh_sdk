@@ -36,7 +36,7 @@
 #define SW_VERSION_SPEC			(3)		// "3" means SIG MESH 1.0.x, "4" means SIG MESH 1.1.x; 0 mean beta version.
 #define SW_VERSION_MAJOR		(1)		// "2" means multi connection, "1" means single connection. just for B91m, different from b85m.
 #define SW_VERSION_MINOR		(0)		// 
-#define SW_VERSION_2ND_MINOR	(4)		// second minor
+#define SW_VERSION_2ND_MINOR	(5)		// second minor
 #else
 #define SW_VERSION_SPEC			(3)		// "3" means SIG MESH 1.0.x
 #define SW_VERSION_MAJOR		(3)		// 

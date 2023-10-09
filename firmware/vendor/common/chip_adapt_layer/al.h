@@ -179,5 +179,7 @@ void user_init_risv_sdk();
 void ble_loop_send_adv_in_gatt();
 unsigned short adc_get_voltage(void);
 void extend_adv_aux_src_sno_xor(aux_payload_t *p_aux);
-
+void bootloader_unlock_flash();
+void mesh_flash_lock();
+void mesh_flash_unlock(void);
 

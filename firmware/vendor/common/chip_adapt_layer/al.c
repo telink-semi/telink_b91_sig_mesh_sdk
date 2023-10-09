@@ -831,3 +831,130 @@ void debug_set_scan_rx_ok_pin(u8 level)
 }
 #endif
 
+#if (__TLSR_RISCV_EN__)
+#define reg_swire_ctrl1			REG_ADDR8(0x100c01)
+#define AS_USB      			(AS_USB_DP)
+#define FLD_USB_BDT_EN      	(BIT(3)|BIT(4))
+#endif
+
+/*_attribute_ahead_ram_code_ */void bootloader_unlock_flash()
+{
+    #if 1 // ((MCU_CORE_TYPE == MCU_CORE_8258)||(MCU_CORE_TYPE == MCU_CORE_8278)) // no need for eagle
+    gpio_set_func(GPIO_DP, AS_USB);   	// input enable inside for B85m, but no input enable inside for B91m. // for B85 GPIO as default, for B87 USB as default.
+    usb_dp_pullup_en(1);
+   
+    	#if (__TLSR_RISCV_EN__)
+    gpio_input_en(GPIO_DP);				// must // input enable as default for chip, but may be disable by gpio_init_() in product image.
+    gpio_input_en(GPIO_DM);				// must // input enable as default for chip, but may be disable by gpio_init_() in product image.
+    	#else
+    gpio_set_func(GPIO_DM, AS_USB);   	// input enable inside.
+    // analog_write(0x34, 0x80);   		// USB clock // disable as default. enable in cpu wakeup init(),
+    	#endif
+    gpio_setup_up_down_resistor(GPIO_DM, PM_PIN_PULLUP_1M);
+    #endif
+   
+    reg_swire_ctrl1 |= FLD_SWIRE_USB_EN;
+    reg_usb_mdev |= FLD_USB_BDT_EN;   	// also enable
+}
+
+
+#if MESH_FLASH_PROTECTION_EN
+/**
+ * @brief     flash mid definition
+ */
+typedef enum{
+	MID146085   =   0x146085,//P25Q80U // 1M byte
+	MID156085   =   0x156085,//P25Q16SU
+	MID1560c8   =   0x1560c8,//GD25LQ16E
+	MID166085   =   0x166085,//P25Q32SU
+	MID186085   =   0x186085,//P25Q128L
+}flash_mid_e;
+
+#define FLASH_LOCK_SECTION		FLASH_LOCK_LOW_896K_MID146085
+#define FLASH_UNLOCK_VAL		FLASH_LOCK_NONE_MID146085
+
+static u32 g_flash_mid = 0;
+
+STATIC_ASSERT(FLASH_ADR_AREA_1_START >= 0xE0000);		// because lock 896k
+STATIC_ASSERT(FLASH_PLUS_ENABLE == 0);					// only support 1M now. 2M need to change flash map and FLASH_LOCK_SECTION.
+
+/**
+ * @brief      this function is used to lock flash.
+ * @param[in]  flash_lock_block - flash lock block, different value for different flash type
+ * @return     none
+ */
+void mesh_flash_lock() // only for MID146085 now. TODO: others.
+{
+	if(0 == g_flash_mid){
+		g_flash_mid = flash_read_mid();
+	}
+
+	if(MID146085 != g_flash_mid){
+		return ;
+	}
+
+	u16 cur_lock_status = flash_read_status_mid146085();
+	u16 target_lock_status = FLASH_LOCK_SECTION;
+
+	if(cur_lock_status == target_lock_status){ //lock status is want we want, no need lock again
+
+	}else{ //unlocked or locked block size is not what we want
+		#if 0 // no need unlock first
+		if(cur_lock_status != flash_unlock_status){ //locked block size is not what we want, need unlock first
+			for(int i = 0; i < 3; i++){ //Unlock flash up to 3 times to prevent failure.
+				flash_unlock_mid();
+				cur_lock_status = flash_get_lock_status_mid();
+
+				if(cur_lock_status == flash_unlock_status){ //unlock success
+					break;
+				}
+			}
+		}
+		#endif
+
+
+		for(int i = 0; i < 3; i++) //Lock flash up to 3 times to prevent failure.
+		{
+			flash_lock_mid146085(target_lock_status);
+			cur_lock_status = flash_read_status_mid146085();
+			if(cur_lock_status == target_lock_status){  //lock OK
+				break;
+			}
+		}
+	}
+}
+
+/**
+ * @brief      this function is used to unlock flash.
+ * @param[in]  none
+ * @return     none
+ */
+void mesh_flash_unlock(void)
+{
+	if(0 == g_flash_mid){
+		g_flash_mid = flash_read_mid();
+	}
+	
+	if(MID146085 != g_flash_mid){
+		return ;
+	}
+	
+	u16 cur_lock_status = flash_read_status_mid146085();
+	u16 target_lock_status = FLASH_UNLOCK_VAL;
+
+	if(cur_lock_status != target_lock_status){ //not in lock status
+		for(int i = 0; i < 3; i++){ //Unlock flash up to 3 times to prevent failure.
+			flash_unlock_mid146085();
+			cur_lock_status = flash_read_status_mid146085();
+
+			if(cur_lock_status == target_lock_status){ //unlock success
+				break;
+			}
+		}
+	}
+}
+#else
+void mesh_flash_unlock(void){ }
+#endif
+
+
